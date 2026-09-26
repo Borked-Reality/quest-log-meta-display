@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quest Log // HUD</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!--
+    The HUD is a fixed 600x600 "stage" matching the Meta Ray-Ban Display.
+    On a normal browser it's centered with a faint outline so you can see
+    the display bounds. Everything the wearer sees lives inside #hud.
+  -->
+  <main id="hud" class="hud">
+
+    <!-- Top bar: clock + date (+ running timer), and persistent stats -->
+    <header class="hud-header">
+      <span class="clock">
+        <b id="clockTime" class="clock-time">3:42 PM</b>
+        <span id="clockDate" class="clock-date">THU 25 SEP</span>
+        <span id="timerBadge" class="timer-badge" hidden>⏱ 9:41</span>
+      </span>
+      <span class="stats">
+        <span class="stat stat-gold" title="Gold">◆ <b id="goldValue">0</b></span>
+        <span class="stat stat-streak" title="Day streak">🔥 <b id="streakValue">0</b></span>
+      </span>
+    </header>
+
+    <!-- Screen area: only one .screen is visible at a time -->
+    <section class="screen-area">
+
+      <!-- SCREEN 1: CURRENT QUEST -->
+      <div id="screenQuest" class="screen">
+        <div id="questType" class="quest-type">MAIN QUEST</div>
+        <!-- Scheduled quests: "⏰ 3:00 PM" / "⏰ Every day 8:00 AM" -->
+        <div id="questSchedule" class="quest-schedule" hidden>⏰ 3:00 PM</div>
+        <h1 id="questTitle" class="quest-title">Take out the trash</h1>
+        <!-- Timed quests ("15-min walk"): countdown, pinch to start/pause -->
+        <div id="questTimer" class="quest-timer" hidden>
+          <div id="questTimerTime" class="quest-timer-time">15:00</div>
+          <div class="quest-timer-bar"><div id="questTimerFill" class="quest-timer-fill"></div></div>
+        </div>
+        <!-- Only shown for counter quests like "Drink water 3 / 8" -->
+        <div id="questProgress" class="progress" hidden>
+          <div id="questPips" class="pips"></div>
+          <div id="questProgressText" class="progress-text">3 / 8 glasses</div>
+        </div>
+        <div class="reward-label">REWARD</div>
+        <div class="reward-row">
+          <span class="reward-xp">+<span id="questXp">25</span> XP</span>
+          <span class="reward-gold">+<span id="questGold">5</span> ◆</span>
+        </div>
+        <div id="questPager" class="pager">1 / 6</div>
+        <!-- Shown after the 1st pinch: the 2nd pinch must come before it drains -->
+        <div class="confirm-bar">
+          <div class="confirm-text">Pinch again to complete</div>
+          <div class="confirm-timer"><div class="confirm-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- SCREEN 2: QUEST COMPLETE -->
+      <div id="screenComplete" class="screen" hidden>
+        <div class="complete-heading">QUEST COMPLETE</div>
+        <div id="completeTitle" class="complete-title">Take out the trash</div>
+        <div id="comboBanner" class="combo" hidden>COMBO ×2</div>
+        <div class="complete-rewards">
+          <span class="reward-xp big">+<span id="completeXp">0</span> XP</span>
+          <span class="reward-gold big">+<span id="completeGold">0</span> ◆</span>
+        </div>
+      </div>
+
+      <!-- SCREEN 2b: LEVEL UP (its own screen, timed to the fanfare) -->
+      <div id="screenLevelUp" class="screen levelup" hidden>
+        <div class="levelup-rays" aria-hidden="true"></div>
+        <div class="levelup-ring" aria-hidden="true"></div>
+        <div id="levelUpHeading" class="levelup-heading">LEVEL UP!</div>
+        <div class="levelup-number"><span class="levelup-lv">LV</span><span id="levelUpNumber">2</span></div>
+        <div id="levelUpTitle" class="levelup-title">New title: Apprentice</div>
+        <div id="levelUpBonus" class="levelup-bonus">+10 ◆ level bonus</div>
+      </div>
+
+      <!-- SCREEN 3: LOOT REWARD -->
+      <div id="screenLoot" class="screen" hidden>
+        <div id="lootRarity" class="loot-rarity">RARE DROP!</div>
+        <div class="loot-card">
+          <div id="lootName" class="loot-name">Goblin Energy Drink</div>
+          <div id="lootEffect" class="loot-effect">+10% Motivation<br>for 30 minutes</div>
+        </div>
+      </div>
+
+      <!-- SCREEN 4: ALL QUESTS CLEARED -->
+      <div id="screenAllClear" class="screen" hidden>
+        <div class="complete-heading">ALL QUESTS CLEAR</div>
+        <div class="allclear-sub">The realm is at peace… for now.</div>
+        <div class="allclear-hint">Pinch for a new round · ▲ swipe up to add a quest</div>
+        <div class="confirm-bar">
+          <div class="confirm-text">Pinch again for a new round</div>
+          <div class="confirm-timer"><div class="confirm-fill"></div></div>
+        </div>
+      </div>
+
+      <!--
+        SCREEN 6: ADD QUEST. On the glasses, pinching the text box opens the
+        built-in voice/handwriting composer. On desktop, just type + Enter.
+        After text arrives, the preview lets the wearer confirm it.
+      -->
+      <div id="screenAdd" class="screen" hidden>
+        <div class="nav-up-hint">▲ Settings</div>
+        <div id="addEntry" class="add-entry">
+          <label for="addInput" class="quest-type" data-type="new">+ ADD QUEST</label>
+          <input id="addInput" class="add-input" type="text" maxlength="80"
+                 placeholder="Pinch, then say it" autocomplete="off" enterkeyhint="done">
+          <div class="add-examples">
+            “Call mom at 3pm” · “Daily: stretch 10 minutes”<br>“Pay rent tomorrow” · “Take out bins in 2 hours”
+          </div>
+        </div>
+        <div id="addPreview" class="add-preview" hidden>
+          <div class="reward-label">NEW QUEST</div>
+          <div id="draftTitle" class="quest-title">Call mom</div>
+          <div id="draftType" class="quest-type">◀ SIDE QUEST ▶</div>
+          <div id="draftExtras" class="draft-extras" hidden>⏰ Today 3:00 PM</div>
+          <div class="reward-row">
+            <span class="reward-xp">+<span id="draftXp">20</span> XP</span>
+            <span class="reward-gold">+<span id="draftGold">4</span> ◆</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 5: NOTIFICATION (new quest, new day, warnings) -->
+      <div id="screenAlert" class="screen" hidden>
+        <div id="alertLabel" class="alert-label">NEW SIDE QUEST</div>
+        <div id="alertTitle" class="alert-title">Refill your water bottle</div>
+        <div id="alertDetail" class="alert-detail">+10 XP   +2 ◆</div>
+      </div>
+
+      <!--
+        SCREEN 7: SETTINGS (swipe up from Add Quest). One setting per card:
+        ◀ ▶ picks a setting, pinch changes it, ▼ goes back.
+      -->
+      <div id="screenSettings" class="screen" hidden>
+        <div class="quest-type" data-type="settings">⚙ SETTINGS</div>
+        <h1 id="settingLabel" class="quest-title">Sound</h1>
+        <div id="settingValue" class="setting-value">On</div>
+        <div id="settingNote" class="setting-note">Pinch to change</div>
+        <div id="settingPager" class="pager">1 / 8</div>
+        <div class="confirm-bar">
+          <div class="confirm-text">Pinch again to reset everything</div>
+          <div class="confirm-timer"><div class="confirm-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- Effects layers (flash + particles) sit on top of the screens -->
+      <div id="particles" class="particles" aria-hidden="true"></div>
+      <!-- Small floating "+5 XP" for counter-quest steps -->
+      <div id="toast" class="toast" aria-live="polite"></div>
+    </section>
+
+    <!-- XP / level bar -->
+    <section class="xp">
+      <div class="xp-row">
+        <span class="xp-level">LV <b id="levelValue">1</b> <span id="levelTitle" class="xp-title">Novice</span></span>
+        <span id="xpText" class="xp-text">0 / 100 XP</span>
+      </div>
+      <div class="xp-bar"><div id="xpFill" class="xp-fill"></div></div>
+    </section>
+
+    <!--
+      Gesture hints: tell the wearer what the Neural Band can do right now.
+      Labels change per screen (see renderControls() in app.js), and each
+      hint pulses when its gesture is received.
+    -->
+    <footer class="hints" aria-label="Gesture hints">
+      <span id="hintBrowse" class="hint">
+        <span class="hint-key">◀ ▶</span>
+        <span id="hintBrowseLabel" class="hint-label">Browse</span>
+      </span>
+      <span id="hintHide" class="hint">
+        <span id="hintHideKey" class="hint-key">▼</span>
+        <span id="hintHideLabel" class="hint-label">Hide</span>
+      </span>
+      <span id="hintConfirm" class="hint hint-primary">
+        <span class="hint-key">PINCH</span>
+        <span id="hintConfirmLabel" class="hint-label">Complete</span>
+      </span>
+    </footer>
+
+    <!-- Idle "glance": the only thing visible while the HUD is idle.
+         The ▲ reminds the wearer that swiping up brings the HUD back. -->
+    <div class="glance" aria-hidden="true">
+      <div class="glance-show">▲</div>
+      <div id="glanceLabel" class="glance-label">QUEST LOG</div>
+      <div id="glanceText" class="glance-text">Take out the trash</div>
+    </div>
+
+    <!-- Full-HUD flash overlay for the completion "hit" -->
+    <div id="flash" class="flash" aria-hidden="true"></div>
+  </main>
+
+  <!--
+    Browser-only test controls. They sit OUTSIDE the 600x600 HUD and are
+    hidden when the viewport is display-sized (i.e. on the glasses).
+    Each button's data-action goes through the same handleAction() as the
+    keyboard / Neural Band.
+  -->
+  <section class="dev-panel">
+    <nav class="controls">
+      <button class="btn btn-nav" data-action="prev" aria-label="Previous quest">◀</button>
+      <button id="confirmButton" class="btn btn-primary" data-action="confirm">COMPLETE</button>
+      <button class="btn btn-nav" data-action="next" aria-label="Next quest">▶</button>
+    </nav>
+    <div class="dev-row">
+      <button id="soundToggle" class="dev-btn" data-action="toggleSound">♪ SOUND ON</button>
+      <button id="soundPreview" class="dev-btn" data-action="previewSound">♪ TEST</button>
+      <button class="dev-btn" data-action="simulateQuest">+ QUEST</button>
+      <button id="clockButton" class="dev-btn" data-action="timeWarp">+1 HR</button>
+      <button class="dev-btn" data-action="hide">HIDE ▼</button>
+      <button class="dev-btn" data-action="show">SHOW ▲</button>
+      <button class="dev-btn" data-action="reset">RESET</button>
+    </div>
+    <p class="preview-caption">
+      Band: ← → browse · ↑ show / Add / Settings · ↓ back / hide · Enter pinch · Esc middle pinch<br>
+      Dev: N incoming quest · T skip ahead 1 hour · P preview sounds · M sound
+    </p>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,829 @@
+/* =========================================================
+   Quest Log // HUD — styles
+   Designed for a 600x600 wearable display.
+   On an additive display black renders as "see-through",
+   so the background stays pure black.
+   ========================================================= */
+
+/* ---------- Color + type tokens (tweak the theme here) ---------- */
+:root {
+  --bg: #000000;
+  --text: #f8f8f2;          /* Dracula foreground */
+  --dim: #8a8fa3;           /* secondary text */
+  --faint: #2a2d36;         /* borders, empty bar */
+  --green: #50fa7b;         /* Dracula green: main accent */
+  --gold: #ffd166;          /* loot / gold rewards */
+  --red: #ff5555;           /* warnings / fail only */
+  --cyan: #8be9fd;
+  --purple: #bd93f9;
+
+  /* Rarity colors */
+  --rarity-common: var(--text);
+  --rarity-uncommon: var(--green);
+  --rarity-rare: var(--gold);
+  --rarity-epic: var(--purple);
+
+  --font: "Roboto", "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- The 600x600 stage ---------- */
+.hud {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  /* Generous inner padding keeps content away from the display edges */
+  padding: 44px 48px 36px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  outline: 1px solid #1a1c22;   /* shows display bounds in a desktop browser */
+}
+
+/* Browser-only test panel below the HUD */
+.dev-panel {
+  width: 600px;
+  padding: 0 48px;
+}
+
+.preview-caption {
+  margin: 10px 0 0;
+  text-align: center;
+  color: #555a6a;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+/* When the viewport IS the display (the glasses), show only the HUD */
+@media (max-width: 640px), (max-height: 640px) {
+  .hud { outline: none; }
+  .dev-panel { display: none; }
+}
+
+/* ---------- Header ---------- */
+.hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 20px;
+}
+
+/* Clock + date (+ a running timer) in the top-left */
+.clock { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+.clock-time { font-size: 22px; font-weight: 800; color: var(--text); }
+.clock-date { font-size: 14px; font-weight: 700; letter-spacing: 0.14em; color: var(--green); }
+
+.timer-badge {
+  padding: 2px 8px;
+  border: 2px solid var(--cyan);
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--cyan);
+  font-variant-numeric: tabular-nums;
+}
+.timer-badge[hidden] { display: none; }
+.timer-badge.is-paused { border-color: var(--gold); color: var(--gold); }
+
+.stats { display: flex; gap: 20px; }
+.stat b { font-weight: 700; }
+.stat-gold { color: var(--gold); }
+.stat-streak { color: var(--text); }
+
+/* ---------- Screen area ---------- */
+.screen-area {
+  position: relative;
+  flex: 1;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+  animation: screen-in 260ms ease-out;
+}
+
+.screen[hidden] { display: none; }
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Screen 1: current quest ---------- */
+.quest-type {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--green);
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  padding: 6px 16px;
+}
+
+.quest-type[data-type="side"]  { color: var(--cyan); }
+.quest-type[data-type="daily"] { color: var(--gold); }
+.quest-type[data-type="done"]  { color: var(--dim); }
+
+.quest-title {
+  margin: 6px 0 4px;
+  font-size: 44px;
+  line-height: 1.1;
+  font-weight: 700;
+  max-width: 480px;
+}
+
+.quest-title.is-done {
+  color: var(--dim);
+  text-decoration: line-through;
+  text-decoration-thickness: 3px;
+}
+
+/* Counter quests: one pip per step (e.g. 8 glasses of water) */
+.progress[hidden] { display: none; }
+.progress { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+.pips { display: flex; gap: 6px; }
+
+.pip {
+  width: 34px;
+  height: 14px;
+  border: 2px solid var(--faint);
+  border-radius: 3px;
+}
+.pip.is-filled { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px rgba(139, 233, 253, 0.5); }
+.pip.is-new    { animation: pop-in 360ms cubic-bezier(.2, 1.6, .4, 1); }
+
+.progress-text { font-size: 20px; font-weight: 700; color: var(--cyan); }
+
+/* Floating "+5 XP" after a counter step */
+.toast {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8%;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--green);
+  opacity: 0;
+  pointer-events: none;
+}
+.toast.is-active { animation: toast 1100ms ease-out; }
+
+@keyframes toast {
+  0%   { opacity: 0; transform: translateY(12px); }
+  20%  { opacity: 1; transform: translateY(0); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-18px); }
+}
+
+.reward-label {
+  font-size: 15px;
+  letter-spacing: 0.25em;
+  color: var(--dim);
+}
+
+.reward-row { display: flex; gap: 28px; font-size: 28px; font-weight: 700; }
+.reward-xp   { color: var(--green); }
+.reward-gold { color: var(--gold); }
+
+.pager {
+  margin-top: 6px;
+  font-size: 16px;
+  color: var(--dim);
+  letter-spacing: 0.15em;
+}
+
+/* Two-pinch confirm: replaces the pager line while armed. The gold bar
+   drains over the confirm window (--confirm-ms is set from app.js). */
+.confirm-bar {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.hud.is-armed .confirm-bar { display: flex; }
+.hud.is-armed .pager,
+.hud.is-armed .allclear-hint { display: none; }
+
+.confirm-text {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  animation: pop-in 260ms cubic-bezier(.2, 1.6, .4, 1);
+}
+
+.confirm-timer {
+  width: 240px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--faint);
+  overflow: hidden;
+}
+.confirm-fill {
+  height: 100%;
+  background: var(--gold);
+  box-shadow: 0 0 10px var(--gold);
+  transform-origin: left;
+  animation: confirm-drain var(--confirm-ms, 3000ms) linear forwards;
+}
+
+@keyframes confirm-drain {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+/* The quest title glows gold while armed */
+.hud.is-armed .quest-title:not(.is-done) { color: var(--gold); text-shadow: 0 0 20px rgba(255, 209, 102, 0.5); }
+
+/* ---------- Screen 2: quest complete ---------- */
+.complete-heading {
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--green);
+  text-shadow: 0 0 24px rgba(80, 250, 123, 0.45);
+  animation: pop-in 420ms cubic-bezier(.2, 1.4, .4, 1);
+}
+
+.complete-title {
+  font-size: 26px;
+  color: var(--text);
+  max-width: 460px;
+}
+
+.complete-rewards { display: flex; gap: 32px; margin-top: 8px; }
+.big { font-size: 40px; font-weight: 800; }
+
+/* Gold pops in 700ms after the XP starts counting, with the coin sound */
+.complete-rewards .reward-gold { animation: pop-in 320ms 700ms cubic-bezier(.2, 1.6, .4, 1) both; }
+
+.combo {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+  animation: pop-in 360ms 200ms cubic-bezier(.2, 1.6, .4, 1) both;
+}
+.combo[hidden] { display: none; }
+
+/* ---------- Screen 2b: LEVEL UP ---------- */
+/* Timings match the fanfare (see showLevelUpScreen in app.js):
+   letters drop in 0–0.8s, impact at 0.96s, title + bonus at 2.0s. */
+.levelup { gap: 6px; }
+
+/* Slowly turning light rays behind everything (black = see-through,
+   so on the glasses these read as beams of light). */
+.levelup-rays {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 640px;
+  height: 640px;
+  margin: -320px 0 0 -320px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 209, 102, 0.22) 0deg 7deg, transparent 7deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 12%, transparent 68%);
+  animation: rays-in 800ms ease-out both, rays-spin 9s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes rays-in   { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+@keyframes rays-spin { to { rotate: 360deg; } }
+
+/* Shockwave ring, fired at the impact */
+.levelup-ring {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 160px;
+  height: 160px;
+  margin: -80px 0 0 -80px;
+  border: 5px solid var(--gold);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+.levelup.is-impact .levelup-ring { animation: shockwave 700ms ease-out; }
+
+@keyframes shockwave {
+  from { opacity: 1; transform: scale(0.3); }
+  to   { opacity: 0; transform: scale(3.2); }
+}
+
+/* "LEVEL UP!" — each letter drops in, one after another */
+.levelup-heading {
+  position: relative;
+  font-size: 58px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  text-shadow: 0 0 22px rgba(255, 209, 102, 0.7);
+}
+.levelup-heading span {
+  display: inline-block;
+  animation: letter-drop 420ms cubic-bezier(.2, 1.6, .4, 1) both;
+  animation-delay: calc(var(--i) * 55ms + 80ms);
+}
+
+@keyframes letter-drop {
+  from { opacity: 0; transform: translateY(-60px) scale(1.4); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* The level number: flips to the new level with a punch at impact */
+.levelup-number {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--text);
+  animation: pop-in 400ms 300ms cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.levelup-lv { font-size: 36px; color: var(--gold); }
+#levelUpNumber { font-size: 120px; text-shadow: 0 0 30px rgba(255, 209, 102, 0.55); }
+
+.levelup.is-impact #levelUpNumber { animation: number-punch 520ms cubic-bezier(.2, 1.8, .4, 1); }
+.levelup.is-pulse  #levelUpNumber { animation: number-pulse 220ms ease-out; }
+
+@keyframes number-punch {
+  0%   { transform: scale(0.4); color: var(--gold); }
+  55%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+@keyframes number-pulse {
+  50% { transform: scale(1.08); }
+}
+
+/* Title + bonus land with the final chord */
+.levelup-title,
+.levelup-bonus {
+  position: relative;
+  animation: pop-in 380ms 2000ms cubic-bezier(.2, 1.5, .4, 1) both;
+}
+.levelup-title { font-size: 24px; font-weight: 700; color: var(--text); }
+.levelup-bonus { font-size: 22px; font-weight: 800; color: var(--gold); animation-delay: 2150ms; }
+
+/* Gold version of the full-screen flash */
+.flash[data-color="gold"] {
+  background: radial-gradient(circle at 50% 45%, rgba(255, 209, 102, 0.45), transparent 65%);
+}
+
+/* ---------- Screen 3: loot ---------- */
+.loot-rarity {
+  --rarity: var(--rarity-common);
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--rarity);
+  text-shadow: 0 0 22px var(--rarity);
+  animation: pop-in 460ms cubic-bezier(.2, 1.5, .4, 1);
+}
+
+.loot-card {
+  --rarity: var(--rarity-common);
+  margin-top: 6px;
+  padding: 22px 30px;
+  border: 3px solid var(--rarity);
+  border-radius: 10px;
+  box-shadow: 0 0 28px -6px var(--rarity), inset 0 0 24px -12px var(--rarity);
+  animation: pop-in 460ms 120ms cubic-bezier(.2, 1.4, .4, 1) both;
+  max-width: 460px;
+}
+
+.loot-name   { font-size: 32px; font-weight: 700; }
+.loot-effect { margin-top: 10px; font-size: 22px; color: var(--dim); line-height: 1.35; }
+
+/* Rarity variants: set on #screenLoot via data-rarity */
+[data-rarity="uncommon"] .loot-rarity, [data-rarity="uncommon"] .loot-card { --rarity: var(--rarity-uncommon); }
+[data-rarity="rare"]     .loot-rarity, [data-rarity="rare"]     .loot-card { --rarity: var(--rarity-rare); }
+[data-rarity="epic"]     .loot-rarity, [data-rarity="epic"]     .loot-card { --rarity: var(--rarity-epic); }
+
+/* ---------- Screen 4: all clear ---------- */
+.allclear-sub  { font-size: 24px; }
+.allclear-hint { font-size: 18px; color: var(--dim); }
+
+/* ---------- Schedules + timers on the quest card ---------- */
+.quest-schedule {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--cyan);
+}
+.quest-schedule[hidden] { display: none; }
+.quest-schedule.is-overdue { color: var(--red); }        /* red = warning only */
+
+.quest-timer { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.quest-timer[hidden] { display: none; }
+
+.quest-timer-time {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;     /* digits don't jiggle as they change */
+  color: var(--dim);
+}
+.quest-timer-bar { width: 260px; height: 6px; border-radius: 3px; background: var(--faint); overflow: hidden; }
+.quest-timer-fill { height: 100%; width: 0; background: var(--cyan); transition: width 1s linear; }
+
+.quest-timer[data-state="running"] .quest-timer-time { color: var(--cyan); }
+.quest-timer[data-state="paused"]  .quest-timer-time { color: var(--gold); animation: blink 1s steps(2) infinite; }
+.quest-timer[data-state="paused"]  .quest-timer-fill { background: var(--gold); }
+.quest-timer[data-state="done"]    .quest-timer-time { color: var(--green); }
+.quest-timer[data-state="done"]    .quest-timer-fill { background: var(--green); }
+
+@keyframes blink { 50% { opacity: 0.35; } }
+
+/* The timer takes the space of the "REWARD" label */
+.screen.has-timer .reward-label { display: none; }
+
+/* ---------- Screen 6: add quest ---------- */
+/* Small "▲ Settings" reminder at the top of the Add page */
+.nav-up-hint {
+  position: absolute;
+  top: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #4a4e5c;
+}
+
+.draft-extras { font-size: 18px; font-weight: 700; color: var(--cyan); }
+.draft-extras[hidden] { display: none; }
+
+/* ---------- Screen 7: settings ---------- */
+.quest-type[data-type="settings"] { color: var(--dim); }
+
+.setting-value {
+  padding: 10px 28px;
+  border: 3px solid var(--green);
+  border-radius: 10px;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--green);
+  animation: pop-in 260ms cubic-bezier(.2, 1.6, .4, 1);
+}
+.setting-value[hidden] { display: none; }
+.setting-note { font-size: 18px; color: var(--dim); }
+
+#screenSettings.is-danger .quest-title { color: var(--red); }
+
+.add-entry,
+.add-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.add-entry[hidden],
+.add-preview[hidden] { display: none; }
+
+.quest-type[data-type="new"] { color: var(--green); }
+
+/* The text box. Transparent background: black is see-through on the
+   glasses, so only the dashed outline and the text are visible. */
+.add-input {
+  width: 460px;
+  padding: 18px 20px;
+  background: transparent;
+  border: 3px dashed var(--green);
+  border-radius: 12px;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
+}
+.add-input::placeholder { color: var(--dim); font-weight: 500; }
+
+/* Focus stays visible (required on the glasses: no cursor). */
+.add-input:focus {
+  border-style: solid;
+  box-shadow: 0 0 24px -6px var(--green), inset 0 0 18px -10px var(--green);
+}
+
+.add-examples { font-size: 17px; line-height: 1.6; color: var(--dim); }
+
+.add-preview .quest-title { animation: pop-in 360ms cubic-bezier(.2, 1.4, .4, 1); }
+
+/* ---------- Screen 5: notification ---------- */
+.alert-label {
+  --alert: var(--green);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--alert);
+  animation: pop-in 380ms cubic-bezier(.2, 1.4, .4, 1);
+}
+
+.alert-title {
+  --alert: var(--green);
+  padding: 20px 28px;
+  border: 3px solid var(--alert);
+  border-radius: 10px;
+  box-shadow: 0 0 26px -8px var(--alert);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  max-width: 480px;
+  animation: pop-in 420ms 80ms cubic-bezier(.2, 1.4, .4, 1) both;
+}
+
+.alert-detail { font-size: 22px; font-weight: 700; color: var(--gold); white-space: pre-wrap; max-width: 480px; }
+
+[data-kind="info"] .alert-label, [data-kind="info"] .alert-title       { --alert: var(--cyan); }
+[data-kind="reminder"] .alert-label, [data-kind="reminder"] .alert-title { --alert: var(--cyan); }
+[data-kind="reminder"] .alert-detail { color: var(--cyan); }
+[data-kind="warning"] .alert-label, [data-kind="warning"] .alert-title { --alert: var(--red); }
+[data-kind="info"] .alert-detail { color: var(--dim); }
+
+/* ---------- Idle mode ---------- */
+/* Everything fades out (black = see-through on the glasses) except the
+   one-line glance. The first gesture wakes the HUD. */
+.hud > * { transition: opacity 600ms ease; }
+.hud.is-idle > :not(.glance) { opacity: 0; }
+
+.glance {
+  position: absolute;
+  left: 48px;
+  right: 48px;
+  bottom: 56px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+}
+.hud.is-idle .glance { opacity: 1; }
+
+.glance-show {
+  font-size: 12px;
+  color: #3d6b4a;                 /* dimmed green: "swipe up to show" */
+  margin-bottom: 4px;
+}
+
+.glance-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: #3d6b4a;                 /* dimmed green */
+}
+
+.glance-text {
+  margin-top: 4px;
+  font-size: 20px;
+  color: #6b7080;                 /* dim, so it doesn't pull focus */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* An unread notification is brighter than the normal glance */
+.hud[data-glance="alert"] .glance-label { color: var(--green); }
+.hud[data-glance="alert"] .glance-text  { color: var(--text); }
+
+/* ---------- XP bar ---------- */
+.xp { margin-bottom: 22px; }
+
+.xp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.xp-level { font-size: 24px; font-weight: 700; letter-spacing: 0.08em; }
+.xp-title { margin-left: 6px; font-size: 16px; font-weight: 600; letter-spacing: 0.1em; color: var(--gold); text-transform: uppercase; }
+.xp-text  { font-size: 18px; color: var(--dim); }
+
+.xp-bar {
+  position: relative;
+  height: 22px;
+  border: 2px solid var(--faint);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.xp-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--green);
+  box-shadow: 0 0 14px rgba(80, 250, 123, 0.6);
+  transition: width 600ms cubic-bezier(.3, .8, .3, 1);
+}
+
+.xp-fill.no-transition { transition: none; }
+.xp-fill.level-glow { background: var(--gold); box-shadow: 0 0 18px var(--gold); }
+
+/* Retro segmented look: dark gaps drawn over the bar */
+.xp-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg,
+    transparent 0 calc(10% - 3px),
+    var(--bg) calc(10% - 3px) 10%);
+  pointer-events: none;
+}
+
+/* ---------- Gesture hints (shown on the glasses) ---------- */
+.hints {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 40px;
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 150ms;
+}
+
+.hint-key {
+  padding: 5px 10px;
+  border: 2px solid var(--dim);
+  border-radius: 6px;
+  color: var(--dim);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.hint-label {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* The pinch hint is the main call to action */
+.hint-primary .hint-key   { background: var(--green); border-color: var(--green); color: var(--bg); }
+.hint-primary .hint-label { color: var(--green); }
+
+/* Armed (after the 1st pinch): the pinch hint turns gold and pulses */
+.hint-primary.is-armed .hint-key   { background: var(--gold); border-color: var(--gold); animation: armed-pulse 600ms ease-in-out infinite; }
+.hint-primary.is-armed .hint-label { color: var(--gold); }
+
+@keyframes armed-pulse {
+  50% { box-shadow: 0 0 16px var(--gold); transform: scale(1.06); }
+}
+
+/* "BACK Undo" for a few seconds after a +1 step */
+.hint.is-undo .hint-key   { border-color: var(--cyan); color: var(--cyan); }
+.hint.is-undo .hint-label { color: var(--cyan); }
+
+/* Gesture not available on this screen */
+.hint.is-off { opacity: 0; }
+.hint.is-disabled .hint-key   { background: transparent; border-color: var(--faint); color: #4a4e5c; }
+.hint.is-disabled .hint-label { color: var(--dim); }
+
+/* Quick pulse when the gesture is received */
+.hint.is-pressed .hint-key { animation: hint-press 220ms ease-out; }
+
+@keyframes hint-press {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.86); filter: brightness(1.6); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- Browser test controls (dev panel) ---------- */
+.controls { display: flex; gap: 12px; margin-top: 16px; }
+
+.btn {
+  height: 64px;
+  border: 2px solid var(--faint);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: transform 80ms, border-color 120ms, opacity 120ms;
+}
+
+.btn:hover:not(:disabled)  { border-color: var(--green); }
+.btn:active:not(:disabled) { transform: scale(0.96); }
+.btn:disabled { opacity: 0.3; cursor: default; }
+
+.btn-nav { width: 72px; }
+
+.btn-primary {
+  flex: 1;
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--bg);
+}
+
+.btn-primary:disabled {
+  background: transparent;
+  color: var(--dim);
+  border-color: var(--faint);
+  opacity: 1;
+}
+
+/* Dev tools row: small and dim on purpose */
+.dev-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.dev-btn {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: #4a4e5c;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+}
+.dev-btn:hover { color: var(--dim); }
+
+/* ---------- Effects ---------- */
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Full-screen flash on completion */
+.flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 40%, rgba(80, 250, 123, 0.35), transparent 65%);
+}
+.flash.is-active { animation: flash 450ms ease-out; }
+
+@keyframes flash {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Particle burst: each particle gets --dx/--dy set from JS */
+.particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  background: var(--particle-color, var(--green));
+  box-shadow: 0 0 8px var(--particle-color, var(--green));
+  animation: particle 750ms ease-out forwards;
+}
+
+@keyframes particle {
+  from { transform: translate(0, 0) scale(1); opacity: 1; }
+  to   { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+}
+
+/* Respect reduced-motion settings */
+@media (prefers-reduced-motion: reduce) {
+  .levelup-rays { animation: none !important; }
+  .hint-primary.is-armed .hint-key { animation: none !important; }
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+  /* The confirm countdown is information, not decoration: keep its timing. */
+  .confirm-fill { animation-duration: var(--confirm-ms, 3000ms) !important; }
+  .quest-timer[data-state="paused"] .quest-timer-time { animation: none !important; }
+}
