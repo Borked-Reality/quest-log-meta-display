@@ -33,9 +33,45 @@ anything time-based.
 - [ ] **Edit and delete quests.** There's no way to remove a mis-heard or
       finished-with quest yet (added dailies repeat forever). For example: a
       "Remove" option when viewing a quest you added.
-- [ ] **Inventory.** Loot is rolled and shown but not kept. Store it in
-      `player` and make a screen to view it. Maybe loot does something
-      (a potion = XP boost).
+- [x] **Loot that does something.** Treasure chests give timed power-ups,
+      Streak Shields and Chest Keys (2026-09-26).
+- [x] **Over-the-top chest** + 26 items + collection/stats recording
+      (2026-09-26).
+- [ ] **Test the chest on the glasses:**
+  - [ ] All the item emoji render.
+  - [ ] Smoothness at 30 Hz during the epic landing (lower `CONFIG.BLING`
+        if it stutters).
+  - [ ] Whether the screen shake is comfortable, and slot music volume.
+
+- [x] **Cosmetics shop** (2026-09-26): 29 items across themes, fonts, sound
+      packs, chest skins and coin rain, with live preview and a two-pinch
+      buy. The chest can't be skipped, and 14 weird/scuffed items were added.
+- [ ] **Test the shop on the glasses:** bundled fonts load and read well,
+      the CRT scanlines look right on the display, and the sound packs play
+      on the speakers.
+- [ ] **More shop stuff:** HUD frames, level-up fanfare variants,
+      particle styles, titles/nameplates, seasonal items, a daily "deal".
+
+### Stats, inventory, collection (planned)
+
+The data is already being recorded (`player.lifetime`, `player.itemsFound`),
+so these screens will have history from day one. A suggested plan:
+
+- **Where they live.** Maybe a `▲ Profile` level (Quest ▲ Add ▲ Shop ▲
+  Profile ▲ Settings) with ◀ ▶ cards for Stats / Collection / Inventory.
+- **Stats.** Cards for lifetime numbers (quests, XP, gold, chests, best
+  streak, best combo). Also worth recording: per-day history for streak
+  calendars and charts.
+- **Collection.** "Found 14 / 26 items", with unfound ones shown as ❓
+  silhouettes (`itemsFound`).
+- **Inventory.** Let some chest items go to a backpack instead of applying
+  instantly, so you can activate a 2× XP potion when you choose.
+  - Needs: `player.inventory: [{ itemId, count }]` and a "use" action.
+  - Decide per item: `store: true` vs applied instantly.
+- **Selling power-ups in the store** (not just cosmetics). Price by
+  rarity (e.g. common 30 / uncommon 75 / rare 180 / epic 400 ◆), maybe as a
+  daily rotating stock of 3 so there's a reason to check in. This needs the
+  inventory first.
 - [ ] **Streak-at-risk reminder.** In the evening, if nothing has been done
       today and the streak > 0, `notify({ kind: "warning", … })`.
 - [ ] **Heads-up before a scheduled quest** (e.g. 10 min before).
@@ -76,8 +112,9 @@ Each of these should plug into the existing hooks rather than rewrite the core:
 
 ## Code health
 
-- **`app.js` is ~2.7k lines.** If it keeps growing, split it into a few plain
-  `<script>` files by section (e.g. `sound.js`, `quests.js`, `ui.js`). Keep
-  it build-free and keep the load order explicit in `index.html`.
+- [x] **Split the code** into 23 small plain scripts in `js/` (2026-09-26).
+  Largest is `js/ui/render.js` at ~420 lines.
+- [ ] **Maybe split `style.css`** (~1.4k lines) the same way, e.g.
+  `css/base.css`, `css/screens.css`, `css/chest.css`, `css/cosmetics.css`.
 - **Save format.** It's versioned by key (`questLogHud.save.v1`). If the
   shape changes incompatibly, bump to `v2` and migrate in `loadProgress()`.

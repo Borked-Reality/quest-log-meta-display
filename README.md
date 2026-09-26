@@ -48,7 +48,7 @@ keyboard *is* the simulator.
 
 The bottom hint bar always shows what each gesture does on the current screen.
 
-**Screens stack vertically:** `Quest board ▲ Add Quest ▲ Settings`.
+**Screens stack vertically:** `Quest board ▲ Add Quest ▲ Shop ▲ Settings`.
 
 **Completing a quest takes two pinches.** The first pinch arms it and a gold
 bar counts down. The second pinch completes it. This prevents accidents, and
@@ -75,8 +75,36 @@ you can switch it off in Settings.
   logs one step, and the pitch rises as you progress. A middle pinch undoes the
   last step for 5 seconds.
 - **Rewards.** XP, gold, level-ups with their own fanfare screen, RPG titles
-  (Novice → Apprentice → … → Mythic), bonus gold per level, random loot
-  (Common/Uncommon/Rare/Epic), combos, and a daily streak.
+  (Novice → Apprentice → … → Mythic), bonus gold per level, combos, and a
+  daily streak.
+- **Treasure chests** (Vampire Survivors style, deliberately over the top).
+  Completing a quest can drop a chest.
+  - **The sequence:** the chest slams down (screen shake), rattles twice as
+    light rays spin up, then bursts open with a white flash, a shockwave, a
+    fan of rarity-coloured beams and an explosion of coins. A slot reel with
+    chase lights spins to chiptune music while coins fountain up, then lands
+    with fireworks and a "NICE!" / "BIG WIN!" / rainbow **"JACKPOT!!"** plus
+    payout bells.
+  - **The prize:** it bounces in with a spinning halo, sparkles, and a
+    **NEW!** sticker the first time you find it.
+  - It can't be skipped with a pinch. Enjoy the show. (A swipe down still
+    escapes if you really need the HUD gone.)
+
+  There are **40 items**, from sensible to deeply scuffed (Suspicious Potato,
+  Gas Station Sushi, Haunted Toaster, Cursed Scratch Card, Alien
+  Tupperware…), and every one really does something:
+  - Timed power-ups: more XP (☕ 🥤 🔮 👑), more gold (🔋 🧲 📿), double XP
+    on water/stretch steps (🧃 💧), better chest odds (🍪 🧦), rarer chests
+    (🍀 🐇), longer combos (🎧 🌀), or several at once (🦄).
+  - 🛡️ / 🔥 Streak Shields: save your streak if you miss a day.
+  - 🗝️ / 📦 Chest Keys: your next quests always drop a chest.
+  - Instant gold or XP (💵 📜 🍌 🥾 💰 🏆).
+  - Gambles: 🎰 scratch card (0–300 gold), 🥔 potato (probably just a
+    potato).
+
+  Active power-ups show as chips by the XP bar ("☕ 12m").
+- **Lifetime stats and a collection log** are recorded in the background (for
+  the upcoming stats / inventory / store screens).
 - **Add quests by voice.** Pinch the Add Quest box and the glasses' built-in
   voice/handwriting composer opens. It understands phrases like:
   - "remind me to call mom at 3pm"
@@ -95,6 +123,15 @@ you can switch it off in Settings.
     sensor, or a timer on desktop.
 - **Idle mode.** After 20 seconds, or on a swipe down, the HUD fades to a
   one-line glance. Black is see-through on the display. Notifications wake it.
+- **Shop.** Spend gold on cosmetics. Each one previews live on the whole HUD
+  while you browse it (try before you buy). Buying takes two pinches.
+  - **Themes:** Pocket Brick, Arctic, Vaporwave, Ember, Gold Rush, Scuffed CRT
+    (with scanlines).
+  - **Fonts:** Terminal, Sharpie, LOUD, Pixel, Glitch.
+  - **Sound packs** that change every sound: 8-Bit, Scuffed Kazoo, Crystal
+    Bells, Deep Fried.
+  - **Chest skins:** Soggy Cardboard Box, Golden, Mimic (with teeth), Crystal.
+  - **Coin rain:** stars, pizza, ducks, frogs, cash.
 - **Settings on the glasses.** Sound, volume, 12/24h clock, one or two pinches
   to complete, auto-hide delay, reminders, timers, and reset.
 - **Sound.** A small synth built on the Web Audio API with no audio files.
@@ -108,21 +145,31 @@ you can switch it off in Settings.
 ```
 index.html   The HUD: every screen, the hint bar, and the desktop test panel
 style.css    All visuals: theme colors (top of file), layout, animations
-app.js       All logic, in numbered sections (see the list at the top of the file)
+js/          All logic, as small plain scripts grouped by job:
+  config.js      tunable numbers (timings, chances, volume)
+  data/          content: quests, chest items, shop items
+  core/          game rules: state + saving, XP/levels, loot, quests, alerts
+  features/      add quest, settings, shop, clock/timers, daily reset, idle
+  sound/         the synth engine + every sound recipe
+  ui/            drawing screens, reward celebrations, effects, gestures
+  main.js        start-up (runs last)
 AGENTS.md    Guide for AI coding assistants (architecture, rules, gotchas)
 CLAUDE.md    Points Claude Code at AGENTS.md
 ROADMAP.md   What's next, known limits, ideas
+fonts/       Bundled shop fonts (.woff2) + their open licences
 ```
 
 ### Common tweaks
 
 | Want to… | Edit |
 |---|---|
-| Add/change daily quests | `QUESTS` in `app.js` (section 2); the field meanings are documented above it |
-| Change loot | `RARITIES` / `LOOT_TABLE` (section 3) |
-| Change level titles | `LEVEL_TITLES` (section 6) |
-| Tune timings, combo window, waking hours | `CONFIG` (section 1) |
-| Change a sound | Its recipe in `SOUNDS` (section 15); press `P` to hear it |
+| Add/change daily quests | `js/data/quests.js` (the field meanings are documented at the top) |
+| Change chest items / odds | `js/data/loot.js` |
+| Add or change shop items | `js/data/shop-items.js` + the matching CSS in the *Cosmetics* part of `style.css` |
+| Tone down the chest effects | `CONFIG.BLING` (1 = full, 0.5 = half) |
+| Change level titles | `LEVEL_TITLES` in `js/core/progression.js` |
+| Tune timings, combo window, waking hours | `js/config.js` |
+| Change a sound | Its recipe in `js/sound/sounds.js`; press `P` to hear it |
 | Change colors | CSS variables at the top of `style.css` |
 
 ---

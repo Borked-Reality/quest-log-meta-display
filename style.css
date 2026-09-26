@@ -74,6 +74,8 @@ body {
 @media (max-width: 640px), (max-height: 640px) {
   .hud { outline: none; }
   .dev-panel { display: none; }
+  /* Never scroll on the display (e.g. while the chest shakes the HUD) */
+  html, body { overflow: hidden; }
 }
 
 /* ---------- Header ---------- */
@@ -392,11 +394,228 @@ body {
 .levelup-bonus { font-size: 22px; font-weight: 800; color: var(--gold); animation-delay: 2150ms; }
 
 /* Gold version of the full-screen flash */
+.flash[data-color="white"] {
+  background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.6), transparent 70%);
+}
 .flash[data-color="gold"] {
   background: radial-gradient(circle at 50% 45%, rgba(255, 209, 102, 0.45), transparent 65%);
 }
 
-/* ---------- Screen 3: loot ---------- */
+/* ---------- Screen 3: treasure chest ---------- */
+/* app.js sets data-rarity and data-phase on #screenLoot:
+   drop → rattle → rattle2 → open → spin → landed → result.
+   Each phase shows one layer; the motion lives here, and the timings
+   match showChestScreen(). Deliberately over the top. */
+.chest { --rarity: var(--rarity-common); }
+.chest[data-rarity="uncommon"] { --rarity: var(--rarity-uncommon); }
+.chest[data-rarity="rare"]     { --rarity: var(--rarity-rare); }
+.chest[data-rarity="epic"]     { --rarity: var(--rarity-epic); }
+
+/* Three stacked layers: the chest, the reel, the result */
+.chest-stage,
+.reel,
+.chest-result {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+.reel,
+.chest-result { opacity: 0; visibility: hidden; }
+
+/* -- Light rays turning behind everything; they build up with the tension -- */
+.chest-rays {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 640px;
+  height: 640px;
+  margin: -320px 0 0 -320px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(var(--rarity) 0deg 6deg, transparent 6deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 8%, transparent 66%);
+  mask-image: radial-gradient(circle, #000 8%, transparent 66%);
+  opacity: 0;
+  transition: opacity 400ms ease;
+  animation: rays-spin 8s linear infinite;
+  pointer-events: none;
+}
+/* Before the lid opens the rays are neutral gold, so they don't spoil it */
+.chest[data-phase="rattle"]  .chest-rays,
+.chest[data-phase="rattle2"] .chest-rays { --rarity: var(--gold); }
+.chest[data-phase="rattle"]  .chest-rays { opacity: 0.12; }
+.chest[data-phase="rattle2"] .chest-rays { opacity: 0.25; animation-duration: 4s; }
+.chest[data-phase="open"]    .chest-rays { opacity: 0.55; animation-duration: 3s; }
+.chest[data-phase="spin"]    .chest-rays { opacity: 0.18; }
+.chest[data-phase="landed"]  .chest-rays { opacity: 0.6; animation-duration: 3s; }
+.chest[data-phase="result"]  .chest-rays { opacity: 0.35; }
+
+/* -- The chest: drops in, rattles (twice, harder), lid flies open -- */
+.chest-svg {
+  position: relative;
+  filter: drop-shadow(0 0 12px rgba(255, 209, 102, 0.35));
+  transition: filter 300ms ease, transform 300ms ease;
+}
+.chest[data-phase="drop"]    .chest-svg { animation: chest-drop 450ms cubic-bezier(.3, 1.4, .5, 1) both; }
+.chest[data-phase="rattle"]  .chest-svg { animation: chest-rattle 350ms linear; filter: drop-shadow(0 0 18px rgba(255, 209, 102, 0.6)); }
+.chest[data-phase="rattle2"] .chest-svg { animation: chest-rattle 300ms linear, chest-swell 350ms ease-in forwards; filter: drop-shadow(0 0 30px var(--gold)); }
+.chest[data-phase="open"]    .chest-svg { filter: drop-shadow(0 0 36px var(--rarity)); transform: scale(1.15); }
+
+.chest-lid {
+  transform-box: fill-box;
+  transform-origin: 85% 100%;
+  transition: transform 220ms cubic-bezier(.2, 1.6, .4, 1);
+}
+.chest:not([data-phase="drop"]):not([data-phase="rattle"]):not([data-phase="rattle2"]) .chest-lid {
+  transform: translateY(-12px) rotate(-30deg);
+}
+
+@keyframes chest-drop {
+  0%   { transform: translateY(-260px) scale(0.8); opacity: 0; }
+  60%  { transform: translateY(0) scale(1.05, 0.9); opacity: 1; }
+  78%  { transform: translateY(-16px) scale(1); }
+  100% { transform: translateY(0); }
+}
+@keyframes chest-rattle {
+  0%, 100% { rotate: 0deg; }
+  15% { rotate: -8deg; }
+  30% { rotate: 8deg; }
+  45% { rotate: -7deg; }
+  60% { rotate: 7deg; }
+  80% { rotate: -4deg; }
+}
+@keyframes chest-swell { to { transform: scale(1.12); } }
+
+/* A fan of five light beams that bursts out of the chest */
+.chest-beams {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+.chest-beam {
+  position: absolute;
+  left: -32px;
+  bottom: 0;
+  width: 64px;
+  height: 340px;
+  background: linear-gradient(to top, var(--rarity), transparent 90%);
+  filter: blur(5px);
+  opacity: 0;
+  transform-origin: bottom center;
+  transform: rotate(var(--a)) scaleY(0);
+  transition: transform 400ms cubic-bezier(.2, 1.3, .4, 1), opacity 300ms;
+}
+.chest-beam:nth-child(3) { width: 90px; left: -45px; }        /* centre beam is widest */
+.chest[data-phase="open"] .chest-beam { opacity: 0.7; transform: rotate(var(--a)) scaleY(1); }
+
+/* Once the reel starts, the chest fades up and away */
+.chest[data-phase="spin"]   .chest-stage,
+.chest[data-phase="landed"] .chest-stage,
+.chest[data-phase="result"] .chest-stage { opacity: 0; transform: scale(0.7) translateY(-60px); }
+
+/* -- The slot reel: 3 rows visible, the prize stops in the middle -- */
+.chest[data-phase="spin"]   .reel,
+.chest[data-phase="landed"] .reel { opacity: 1; visibility: visible; }
+
+.reel-window {
+  width: 460px;
+  height: 192px;                 /* 3 × 64px rows (REEL_ROW_PX in app.js) */
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+  mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+}
+.reel-strip { will-change: transform; }
+
+.reel-row {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--rarity-common);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.reel-row[data-rarity="uncommon"] { color: var(--rarity-uncommon); }
+.reel-row[data-rarity="rare"]     { color: var(--rarity-rare); }
+.reel-row[data-rarity="epic"]     { color: var(--rarity-epic); }
+.reel-icon { width: 44px; font-size: 34px; text-align: center; }
+
+/* The frame around the middle row, with slot-machine chase lights */
+.reel-frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 470px;
+  height: 68px;
+  margin: -34px 0 0 -235px;
+  border: 3px solid var(--gold);
+  border-radius: 10px;
+  box-shadow: 0 0 18px -4px var(--gold);
+  pointer-events: none;
+}
+.bulb {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
+  opacity: 0.25;
+  animation: bulb-chase 1080ms steps(1) infinite;
+  animation-delay: calc(var(--i) * 60ms);
+}
+@keyframes bulb-chase {
+  0%, 20% { opacity: 1; }
+  21%, 100% { opacity: 0.25; }
+}
+
+.chest[data-phase="landed"] .reel-frame {
+  border-color: var(--rarity);
+  box-shadow: 0 0 34px var(--rarity), inset 0 0 22px -8px var(--rarity);
+  animation: frame-flash 300ms ease-out 3;
+}
+.chest[data-phase="landed"] .bulb {
+  background: var(--rarity);
+  box-shadow: 0 0 10px var(--rarity);
+  animation: bulb-flash 200ms steps(1) infinite;
+  animation-delay: 0ms;
+}
+@keyframes frame-flash { 50% { transform: scale(1.06); } }
+@keyframes bulb-flash { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.2; } }
+
+/* "NICE!" / "BIG WIN!" / "JACKPOT!!" above the reel */
+.chest-shout {
+  position: absolute;
+  top: -4px;
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--rarity);
+  text-shadow: 0 0 20px var(--rarity);
+  opacity: 0;
+  transform: scale(0.3);
+}
+.chest-shout:empty { display: none; }
+.chest[data-phase="landed"] .chest-shout { animation: shout-pop 500ms cubic-bezier(.2, 1.8, .4, 1) forwards; }
+@keyframes shout-pop {
+  0%   { opacity: 0; transform: scale(0.3) rotate(-8deg); }
+  60%  { opacity: 1; transform: scale(1.25) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+/* -- The result: rarity, the item, bonus gold -- */
+.chest[data-phase="result"] .chest-result { opacity: 1; visibility: visible; }
+.chest-result { gap: 10px; }
+
 .loot-rarity {
   --rarity: var(--rarity-common);
   font-size: 40px;
@@ -404,27 +623,187 @@ body {
   letter-spacing: 0.08em;
   color: var(--rarity);
   text-shadow: 0 0 22px var(--rarity);
-  animation: pop-in 460ms cubic-bezier(.2, 1.5, .4, 1);
+}
+/* Each letter bounces in a little wave */
+.loot-rarity span { display: inline-block; }
+.chest[data-phase="result"] .loot-rarity span {
+  animation: letter-wave 900ms ease-in-out infinite;
+  animation-delay: calc(var(--i) * 70ms);
+}
+@keyframes letter-wave {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-8px); }
 }
 
 .loot-card {
   --rarity: var(--rarity-common);
-  margin-top: 6px;
-  padding: 22px 30px;
+  position: relative;
+  padding: 12px 28px 16px;
   border: 3px solid var(--rarity);
   border-radius: 10px;
   box-shadow: 0 0 28px -6px var(--rarity), inset 0 0 24px -12px var(--rarity);
-  animation: pop-in 460ms 120ms cubic-bezier(.2, 1.4, .4, 1) both;
-  max-width: 460px;
+  max-width: 470px;
 }
 
-.loot-name   { font-size: 32px; font-weight: 700; }
-.loot-effect { margin-top: 10px; font-size: 22px; color: var(--dim); line-height: 1.35; }
+/* The prize icon, with a spinning halo behind it */
+.loot-icon-wrap { position: relative; display: inline-block; }
+.loot-icon-wrap::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(var(--rarity) 0deg 10deg, transparent 10deg 30deg);
+  -webkit-mask-image: radial-gradient(circle, #000 20%, transparent 70%);
+  mask-image: radial-gradient(circle, #000 20%, transparent 70%);
+  opacity: 0.6;
+  animation: rays-spin 4s linear infinite;
+}
+.loot-icon { position: relative; font-size: 52px; line-height: 1.1; }
+.chest[data-phase="result"] .loot-icon { animation: icon-bounce 700ms cubic-bezier(.2, 1.8, .4, 1) both; }
+@keyframes icon-bounce {
+  0%   { transform: scale(0) rotate(-40deg); }
+  60%  { transform: scale(1.35) rotate(10deg); }
+  100% { transform: scale(1) rotate(0); }
+}
 
-/* Rarity variants: set on #screenLoot via data-rarity */
+.loot-name   { font-size: 28px; font-weight: 700; }
+.loot-effect { margin-top: 6px; font-size: 21px; color: var(--dim); line-height: 1.3; }
+.chest-gold  { font-size: 22px; font-weight: 800; color: var(--gold); }
+
+/* "NEW!" sticker the first time you find an item */
+.new-badge {
+  position: absolute;
+  top: -14px;
+  right: -18px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--red);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  transform: rotate(12deg);
+  display: none;
+}
+.chest.is-new .new-badge { display: block; }
+.chest[data-phase="result"] .new-badge { animation: sticker-slap 400ms 300ms cubic-bezier(.2, 1.8, .4, 1) both; }
+@keyframes sticker-slap {
+  0%   { transform: rotate(40deg) scale(2.5); opacity: 0; }
+  100% { transform: rotate(12deg) scale(1); opacity: 1; }
+}
+
+.chest[data-phase="result"] .loot-rarity { animation: pop-in 420ms cubic-bezier(.2, 1.5, .4, 1) both; }
+.chest[data-phase="result"] .loot-card   { animation: pop-in 420ms 100ms cubic-bezier(.2, 1.4, .4, 1) both; }
+.chest[data-phase="result"] .chest-gold  { animation: pop-in 320ms 250ms cubic-bezier(.2, 1.6, .4, 1) both; }
+
+/* Rarity variants for the result card */
 [data-rarity="uncommon"] .loot-rarity, [data-rarity="uncommon"] .loot-card { --rarity: var(--rarity-uncommon); }
 [data-rarity="rare"]     .loot-rarity, [data-rarity="rare"]     .loot-card { --rarity: var(--rarity-rare); }
 [data-rarity="epic"]     .loot-rarity, [data-rarity="epic"]     .loot-card { --rarity: var(--rarity-epic); }
+
+/* -- EPIC: everything goes rainbow (after the lid opens) -- */
+.chest[data-rarity="epic"][data-phase="open"] .chest-rays,
+.chest[data-rarity="epic"][data-phase="spin"] .chest-rays,
+.chest[data-rarity="epic"][data-phase="landed"] .chest-rays,
+.chest[data-rarity="epic"][data-phase="result"] .chest-rays,
+.chest[data-rarity="epic"] .loot-icon-wrap::before {
+  animation: rays-spin 3s linear infinite, rainbow 1.2s linear infinite;
+}
+.chest[data-rarity="epic"] .chest-beam { animation: rainbow 1.2s linear infinite; }
+.chest[data-rarity="epic"] .chest-shout {
+  background: linear-gradient(90deg, #ff5555, #ffd166, #50fa7b, #8be9fd, #bd93f9, #ff79c6, #ff5555);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 12px var(--purple));
+}
+.chest[data-rarity="epic"][data-phase="landed"] .chest-shout {
+  animation: shout-pop 500ms cubic-bezier(.2, 1.8, .4, 1) forwards, rainbow-slide 800ms linear infinite;
+}
+@keyframes rainbow { to { filter: hue-rotate(360deg); } }
+@keyframes rainbow-slide { to { background-position: 200% 0; } }
+
+/* -- Shared bling pieces (spawned by app.js into the particle layer) -- */
+
+/* Gold coins: fly up, then fall with gravity */
+.coin {
+  position: absolute;
+  font-size: var(--size, 20px);
+  color: var(--gold);
+  text-shadow: 0 0 8px var(--gold);
+  pointer-events: none;
+  animation: coin-arc 1100ms both;
+}
+@keyframes coin-arc {
+  0%   { transform: translate(0, 0) rotate(0) scale(0.5); opacity: 0; animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  8%   { opacity: 1; }
+  45%  { transform: translate(calc(var(--dx) * 0.5), var(--peak)) rotate(200deg) scale(1); animation-timing-function: cubic-bezier(.6, 0, .9, .5); }
+  100% { transform: translate(var(--dx), 260px) rotate(420deg) scale(0.8); opacity: 0; }
+}
+
+/* Twinkling stars */
+.sparkle {
+  position: absolute;
+  font-size: 22px;
+  color: var(--sparkle-color, var(--text));
+  text-shadow: 0 0 10px var(--sparkle-color, var(--text));
+  pointer-events: none;
+  animation: twinkle 800ms ease-in-out both;
+}
+@keyframes twinkle {
+  0%, 100% { transform: scale(0) rotate(0); opacity: 0; }
+  50%      { transform: scale(1.3) rotate(90deg); opacity: 1; }
+}
+
+/* Shockwave ring */
+.shock-ring {
+  position: absolute;
+  left: 50%;
+  width: 140px;
+  height: 140px;
+  margin: -70px 0 0 -70px;
+  border: 5px solid var(--ring-color, var(--gold));
+  border-radius: 50%;
+  box-shadow: 0 0 20px var(--ring-color, var(--gold));
+  pointer-events: none;
+  animation: shockwave 700ms ease-out forwards;
+}
+
+/* Screen shake (the whole HUD) */
+.hud.is-shaking { animation: hud-shake 320ms linear; }
+@keyframes hud-shake {
+  0%, 100% { translate: 0 0; }
+  15% { translate: calc(var(--shake) * -1) calc(var(--shake) * 0.5); }
+  30% { translate: var(--shake) calc(var(--shake) * -0.5); }
+  45% { translate: calc(var(--shake) * -0.7) 0; }
+  60% { translate: calc(var(--shake) * 0.6) calc(var(--shake) * 0.4); }
+  80% { translate: calc(var(--shake) * -0.3) 0; }
+}
+
+/* Power-up chips next to the level ("☕ 12m  🛡️ ×1") */
+.buff-bar {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cyan);
+  white-space: nowrap;
+}
+.buff-bar[hidden] { display: none; }
+
+/* "⚡ ×1.5 XP" on Quest Complete when a power-up boosted it */
+.complete-boost {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--cyan);
+  animation: pop-in 300ms 500ms cubic-bezier(.2, 1.6, .4, 1) both;
+}
+.complete-boost[hidden] { display: none; }
 
 /* ---------- Screen 4: all clear ---------- */
 .allclear-sub  { font-size: 24px; }
@@ -815,9 +1194,199 @@ body {
   to   { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
 }
 
+/* =========================================================
+   COSMETICS (bought in the Shop — see SHOP_ITEMS in app.js)
+   ========================================================= */
+
+/* ---------- Chest skins (data-skin on the chest SVG) ---------- */
+.chest-svg {
+  --c-outline: #3b2412;
+  --c-wood: #8b5a2b;
+  --c-dark: #5c3a1a;
+  --c-light: #c47f3c;
+  --c-trim: #ffd166;
+  --c-lock: #ffd166;
+}
+.c-outline { fill: var(--c-outline); }
+.c-keyhole { fill: var(--c-outline); }
+.c-wood    { fill: var(--c-wood); }
+.c-dark    { fill: var(--c-dark); }
+.c-light   { fill: var(--c-light); }
+.c-trim    { fill: var(--c-trim); }
+.c-lock    { fill: var(--c-lock); }
+.c-mimic   { display: none; }
+.c-tooth   { fill: #f8f8f2; }
+.c-tongue  { fill: #ff5577; }
+.c-eye     { fill: #ffd166; }
+.c-pupil   { fill: #000; }
+
+/* Soggy Cardboard Box: tan, tape instead of metal, no lock */
+.chest-svg[data-skin="cardboard"] {
+  --c-outline: #5a4630; --c-wood: #c8a26b; --c-dark: #a07e4a;
+  --c-light: #dcc08c; --c-trim: #e9dcb4;
+}
+.chest-svg[data-skin="cardboard"] .c-lock,
+.chest-svg[data-skin="cardboard"] .c-keyhole { display: none; }
+
+/* Golden Chest */
+.chest-svg[data-skin="gold"] {
+  --c-outline: #6b4e00; --c-wood: #e6b422; --c-dark: #b8860b;
+  --c-light: #ffe066; --c-trim: #fff3b0; --c-lock: #ffffff;
+}
+
+/* Crystal Chest */
+.chest-svg[data-skin="crystal"] {
+  --c-outline: #1d5a73; --c-wood: #7fe7ff; --c-dark: #3aa6c8;
+  --c-light: #d9fbff; --c-trim: #ffffff; --c-lock: #bd93f9;
+}
+
+/* Mimic: dark wood, teeth, eyes, and a tongue when it opens */
+.chest-svg[data-skin="mimic"] {
+  --c-outline: #1e0f08; --c-wood: #6b3f2a; --c-dark: #40241a;
+  --c-light: #8a5438; --c-trim: #9a9a9a; --c-lock: #9a9a9a;
+}
+.chest-svg[data-skin="mimic"] .c-mimic { display: inline; }
+
+/* ---------- Colour themes (data-theme on <html>) ---------- */
+/* Background always stays black (see-through on the glasses). Red stays
+   red: it means "warning" in every theme. */
+:root[data-theme="gameboy"] {
+  --text: #e0f8d0; --dim: #88c070; --faint: #2f4a2a;
+  --green: #9bbc0f; --gold: #c8e070; --cyan: #8bac0f; --purple: #d0f0a0;
+}
+:root[data-theme="arctic"] {
+  --text: #f0fbff; --dim: #7c98a8; --faint: #22323a;
+  --green: #7fe7ff; --gold: #e6f7ff; --cyan: #b3f0ff; --purple: #a0b8ff;
+}
+:root[data-theme="vapor"] {
+  --text: #fdf6ff; --dim: #9a8fbf; --faint: #2e2440;
+  --green: #ff71ce; --gold: #fffb96; --cyan: #01cdfe; --purple: #b967ff;
+}
+:root[data-theme="ember"] {
+  --text: #fff1e0; --dim: #a8866a; --faint: #3a2618;
+  --green: #ff9e3d; --gold: #ffd166; --cyan: #ffb385; --purple: #ff5e87;
+}
+:root[data-theme="gold"] {
+  --text: #fffaf0; --dim: #b8a070; --faint: #3a3220;
+  --green: #ffd166; --gold: #fff2a8; --cyan: #ffe08a; --purple: #ffb347;
+}
+:root[data-theme="crt"] {
+  --text: #c8ffd4; --dim: #4f8a5f; --faint: #16301e;
+  --green: #33ff66; --gold: #d4ff33; --cyan: #66ffcc; --purple: #aaff88;
+}
+
+/* Scuffed CRT: scanlines, colour fringing, and the odd flicker/jitter */
+:root[data-theme="crt"] .hud {
+  text-shadow: 1px 0 rgba(255, 40, 90, 0.5), -1px 0 rgba(40, 200, 255, 0.5);
+  animation: crt-jitter 7s infinite;
+}
+:root[data-theme="crt"] .hud::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0 1px, transparent 1px 3px);
+  animation: crt-flicker 5s steps(1) infinite;
+}
+:root[data-theme="crt"] .hud.is-shaking { animation: hud-shake 320ms linear; }   /* shake still wins */
+@keyframes crt-flicker { 0%, 96%, 100% { opacity: 1; } 97% { opacity: 0.5; } 98% { opacity: 0.9; } }
+@keyframes crt-jitter  { 0%, 93%, 100% { translate: 0 0; } 94% { translate: 2px 0; } 95% { translate: -2px 1px; } 96% { translate: 1px 0; } }
+
+/* ---------- Fonts (data-font on <html>) ---------- */
+/* Bundled in fonts/ (open licences, see the *-OFL / LICENSE files). The
+   browser only downloads a font when it's actually used. */
+@font-face { font-family: "QL Pixel";    src: url("fonts/pressstart2p.woff2") format("woff2");    font-display: swap; }
+@font-face { font-family: "QL Terminal"; src: url("fonts/vt323.woff2") format("woff2");           font-display: swap; }
+@font-face { font-family: "QL Loud";     src: url("fonts/bungee.woff2") format("woff2");          font-display: swap; }
+@font-face { font-family: "QL Marker";   src: url("fonts/permanentmarker.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "QL Glitch";   src: url("fonts/rubikglitch.woff2") format("woff2");     font-display: swap; }
+
+/* Wide fonts are only used for "display" text (headings, numbers, tags);
+   font-size-adjust shrinks them so they fit the same space. */
+:root { --font-display: var(--font); --display-adjust: none; }
+:root[data-font="pixel"]    { --font-display: "QL Pixel", var(--font);   --display-adjust: 0.4; }
+:root[data-font="loud"]     { --font-display: "QL Loud", var(--font);    --display-adjust: 0.44; }
+:root[data-font="marker"]   { --font-display: "QL Marker", var(--font);  --display-adjust: 0.5; }
+:root[data-font="glitch"]   { --font-display: "QL Glitch", var(--font);  --display-adjust: 0.5; }
+:root[data-font="terminal"] { --font-display: "QL Terminal", var(--font); --display-adjust: 0.55; }
+/* Terminal is narrow enough for everything, so it replaces the body font too */
+:root[data-font="terminal"] body { font-family: "QL Terminal", var(--font); font-size-adjust: 0.55; }
+
+.clock-time, .quest-type, .complete-heading, .big, .reward-row, .combo,
+.levelup-heading, .levelup-number, .loot-rarity, .chest-shout, .alert-label,
+.xp-level, .setting-value, .shop-price, .hint-key, .confirm-text,
+.quest-timer-time, .toast, .quest-title, .loot-name, .reel-name {
+  font-family: var(--font-display);
+  font-size-adjust: var(--display-adjust);
+}
+
+/* ---------- Screen 8: shop ---------- */
+.shop { gap: 8px; }
+.shop .quest-title { font-size: 38px; }          /* long names + wide fonts must fit */
+.quest-type[data-type="shop"] { color: var(--gold); }
+
+.shop-preview {
+  height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.shop-icon { font-size: 58px; line-height: 1; filter: drop-shadow(0 0 14px var(--gold)); }
+.shop-icon[hidden] { display: none; }
+.shop-chest .chest-svg.mini { width: 84px; height: 74px; }
+.shop-chest .chest-svg.mini.is-bouncing { animation: chest-drop 450ms cubic-bezier(.3, 1.4, .5, 1) both; }
+
+.shop-price {
+  padding: 6px 22px;
+  border: 3px solid var(--gold);
+  border-radius: 10px;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.shop-price[data-state="owned"] { border-color: var(--green); color: var(--green); }
+.shop-price[data-state="poor"]  { border-color: var(--faint); color: var(--dim); }
+
+/* "UNLOCKED!" stamp after buying */
+.shop-stamp {
+  position: absolute;
+  top: 40%;
+  padding: 8px 22px;
+  border: 5px solid var(--gold);
+  border-radius: 10px;
+  color: var(--gold);
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 20px var(--gold);
+  box-shadow: 0 0 30px var(--gold);
+  opacity: 0;
+  pointer-events: none;
+}
+.shop.is-bought .shop-stamp { animation: stamp-slam 1600ms cubic-bezier(.2, 1.6, .4, 1) forwards; }
+@keyframes stamp-slam {
+  0%   { opacity: 0; transform: rotate(-30deg) scale(3); }
+  18%  { opacity: 1; transform: rotate(-10deg) scale(1); }
+  75%  { opacity: 1; transform: rotate(-10deg) scale(1); }
+  100% { opacity: 0; transform: rotate(-10deg) scale(1.1); }
+}
+
+/* Emoji coins (pizza, ducks...) don't need the gold glow */
+.coin.is-emoji { text-shadow: none; filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4)); }
+
+/* Gamble result on the chest card ("You scratched 212 ◆!") */
+.chest-note { font-size: 20px; font-weight: 800; color: var(--gold); }
+.chest-note:empty { display: none; }
+
 /* Respect reduced-motion settings */
 @media (prefers-reduced-motion: reduce) {
   .levelup-rays { animation: none !important; }
+  /* Looping chest bling would flicker at 1ms: switch it off instead */
+  .chest-rays, .chest-beam, .bulb, .loot-icon-wrap::before,
+  .loot-rarity span, .chest-shout { animation: none !important; }
+  .chest-shout { opacity: 1 !important; transform: none !important; }
+  :root[data-theme="crt"] .hud, :root[data-theme="crt"] .hud::after { animation: none !important; }
   .hint-primary.is-armed .hint-key { animation: none !important; }
   *, *::before, *::after {
     animation-duration: 1ms !important;

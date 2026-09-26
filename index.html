@@ -69,6 +69,7 @@
           <span class="reward-xp big">+<span id="completeXp">0</span> XP</span>
           <span class="reward-gold big">+<span id="completeGold">0</span> ◆</span>
         </div>
+        <div id="completeBoost" class="complete-boost" hidden>⚡ ×1.5 XP</div>
       </div>
 
       <!-- SCREEN 2b: LEVEL UP (its own screen, timed to the fanfare) -->
@@ -81,12 +82,79 @@
         <div id="levelUpBonus" class="levelup-bonus">+10 ◆ level bonus</div>
       </div>
 
-      <!-- SCREEN 3: LOOT REWARD -->
-      <div id="screenLoot" class="screen" hidden>
-        <div id="lootRarity" class="loot-rarity">RARE DROP!</div>
-        <div class="loot-card">
-          <div id="lootName" class="loot-name">Goblin Energy Drink</div>
-          <div id="lootEffect" class="loot-effect">+10% Motivation<br>for 30 minutes</div>
+      <!--
+        SCREEN 3: TREASURE CHEST. Phases (data-phase, set from app.js):
+        drop → rattle → rattle2 → open → spin → landed → result.
+        CSS does the motion; app.js adds coins, sparkles, shake and sound.
+      -->
+      <div id="screenLoot" class="screen chest" hidden>
+        <!-- The chest (pixel art) + the light beam behind it -->
+        <!-- Light rays turning behind everything (rarity colour, rainbow for epic) -->
+        <div class="chest-rays" aria-hidden="true"></div>
+        <div class="chest-stage">
+          <!-- A fan of light beams that bursts out when the lid opens -->
+          <div class="chest-beams" aria-hidden="true">
+            <span class="chest-beam" style="--a: -32deg"></span>
+            <span class="chest-beam" style="--a: -16deg"></span>
+            <span class="chest-beam" style="--a: 0deg"></span>
+            <span class="chest-beam" style="--a: 16deg"></span>
+            <span class="chest-beam" style="--a: 32deg"></span>
+          </div>
+          <svg id="chestSvg" class="chest-svg" data-skin="wood" viewBox="0 0 32 28" width="144" height="126" shape-rendering="crispEdges" aria-hidden="true">
+            <g class="chest-base">
+              <rect class="c-outline" x="1" y="13" width="30" height="14"/>
+              <rect class="c-wood" x="2" y="14" width="28" height="12"/>
+              <rect class="c-dark" x="2" y="23" width="28" height="3"/>
+              <rect class="c-trim" x="4" y="14" width="3" height="12"/>
+              <rect class="c-trim" x="25" y="14" width="3" height="12"/>
+              <rect class="c-lock" x="13" y="13" width="6" height="6"/>
+              <rect class="c-keyhole" x="15" y="15" width="2" height="2"/>
+              <rect class="c-mimic c-tongue" x="11" y="12" width="10" height="3"/>
+            </g>
+            <g class="chest-lid">
+              <rect class="c-outline" x="1" y="4" width="30" height="10"/>
+              <rect class="c-wood" x="2" y="5" width="28" height="8"/>
+              <rect class="c-light" x="2" y="5" width="28" height="2"/>
+              <rect class="c-dark" x="2" y="11" width="28" height="2"/>
+              <rect class="c-trim" x="4" y="5" width="3" height="8"/>
+              <rect class="c-trim" x="25" y="5" width="3" height="8"/>
+              <g class="c-mimic">
+                <rect class="c-eye" x="10" y="7" width="3" height="3"/>
+                <rect class="c-pupil" x="11" y="8" width="1" height="2"/>
+                <rect class="c-eye" x="19" y="7" width="3" height="3"/>
+                <rect class="c-pupil" x="20" y="8" width="1" height="2"/>
+                <rect class="c-tooth" x="3" y="13" width="2" height="3"/>
+                <rect class="c-tooth" x="8" y="13" width="2" height="2"/>
+                <rect class="c-tooth" x="12" y="13" width="2" height="3"/>
+                <rect class="c-tooth" x="18" y="13" width="2" height="3"/>
+                <rect class="c-tooth" x="22" y="13" width="2" height="2"/>
+                <rect class="c-tooth" x="27" y="13" width="2" height="3"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Slot reel: 3 rows visible, the prize stops in the middle -->
+        <div class="reel">
+          <!-- "NICE!" / "BIG WIN!" / "JACKPOT!!" when it lands -->
+          <div id="chestShout" class="chest-shout">BIG WIN!</div>
+          <div class="reel-window"><div id="reelStrip" class="reel-strip"></div></div>
+          <!-- Frame with chase-light bulbs (added by buildReelBulbs) -->
+          <div id="reelFrame" class="reel-frame"></div>
+        </div>
+
+        <!-- The prize -->
+        <div class="chest-result">
+          <div id="lootRarity" class="loot-rarity">RARE!</div>
+          <div class="loot-card">
+            <div class="new-badge">NEW!</div>
+            <!-- The prize icon, with a spinning halo of light behind it -->
+            <div class="loot-icon-wrap"><div id="lootIcon" class="loot-icon">🥤</div></div>
+            <div id="lootName" class="loot-name">Goblin Energy Drink</div>
+            <div id="lootEffect" class="loot-effect">+50% XP for 30 min</div>
+          </div>
+          <div id="chestNote" class="chest-note"></div>
+          <div class="chest-gold">+<span id="chestGold">0</span> ◆ bonus</div>
         </div>
       </div>
 
@@ -107,7 +175,7 @@
         After text arrives, the preview lets the wearer confirm it.
       -->
       <div id="screenAdd" class="screen" hidden>
-        <div class="nav-up-hint">▲ Settings</div>
+        <div class="nav-up-hint">▲ Shop</div>
         <div id="addEntry" class="add-entry">
           <label for="addInput" class="quest-type" data-type="new">+ ADD QUEST</label>
           <input id="addInput" class="add-input" type="text" maxlength="80"
@@ -136,7 +204,30 @@
       </div>
 
       <!--
-        SCREEN 7: SETTINGS (swipe up from Add Quest). One setting per card:
+        SCREEN 8: SHOP (swipe up from Add Quest). One item per card:
+        ◀ ▶ browse (the item previews live on the HUD), pinch to buy/equip.
+      -->
+      <div id="screenShop" class="screen shop" hidden>
+        <div class="nav-up-hint">▲ Settings</div>
+        <div id="shopKind" class="quest-type" data-type="shop">🛒 THEME</div>
+        <div class="shop-preview">
+          <div id="shopIcon" class="shop-icon">🌴</div>
+          <!-- A copy of the chest SVG goes here (for chest skins) -->
+          <div id="shopChestSlot" class="shop-chest"></div>
+        </div>
+        <h1 id="shopName" class="quest-title">Vaporwave</h1>
+        <div id="shopDesc" class="setting-note">A E S T H E T I C</div>
+        <div id="shopPrice" class="shop-price">250 ◆</div>
+        <div id="shopPager" class="pager">1 / 30</div>
+        <div class="confirm-bar">
+          <div class="confirm-text">Pinch again to buy</div>
+          <div class="confirm-timer"><div class="confirm-fill"></div></div>
+        </div>
+        <div class="shop-stamp" aria-hidden="true">UNLOCKED!</div>
+      </div>
+
+      <!--
+        SCREEN 7: SETTINGS (swipe up from the Shop). One setting per card:
         ◀ ▶ picks a setting, pinch changes it, ▼ goes back.
       -->
       <div id="screenSettings" class="screen" hidden>
@@ -161,6 +252,8 @@
     <section class="xp">
       <div class="xp-row">
         <span class="xp-level">LV <b id="levelValue">1</b> <span id="levelTitle" class="xp-title">Novice</span></span>
+        <!-- Active power-ups from chests: "☕ 12m  🛡️ ×1" -->
+        <span id="buffBar" class="buff-bar" hidden></span>
         <span id="xpText" class="xp-text">0 / 100 XP</span>
       </div>
       <div class="xp-bar"><div id="xpFill" class="xp-fill"></div></div>
@@ -220,11 +313,38 @@
       <button class="dev-btn" data-action="reset">RESET</button>
     </div>
     <p class="preview-caption">
-      Band: ← → browse · ↑ show / Add / Settings · ↓ back / hide · Enter pinch · Esc middle pinch<br>
+      Band: ← → browse · ↑ show / Add / Shop / Settings · ↓ back / hide · Enter pinch · Esc middle pinch<br>
       Dev: N incoming quest · T skip ahead 1 hour · P preview sounds · M sound
     </p>
   </section>
 
-  <script src="app.js"></script>
+  <!--
+    The app's code, split by job (see AGENTS.md for the map). These are
+    plain scripts, not modules, so the page still works when opened
+    straight from disk. ORDER MATTERS: data before logic, main.js last.
+  -->
+  <script src="js/config.js"></script>
+  <script src="js/data/quests.js"></script>
+  <script src="js/data/loot.js"></script>
+  <script src="js/data/shop-items.js"></script>
+  <script src="js/core/state.js"></script>
+  <script src="js/core/progression.js"></script>
+  <script src="js/core/loot.js"></script>
+  <script src="js/core/quests.js"></script>
+  <script src="js/core/notifications.js"></script>
+  <script src="js/features/add-quest.js"></script>
+  <script src="js/features/settings.js"></script>
+  <script src="js/features/shop.js"></script>
+  <script src="js/features/time.js"></script>
+  <script src="js/features/daily.js"></script>
+  <script src="js/features/motion.js"></script>
+  <script src="js/features/idle.js"></script>
+  <script src="js/sound/engine.js"></script>
+  <script src="js/sound/sounds.js"></script>
+  <script src="js/ui/render.js"></script>
+  <script src="js/ui/rewards.js"></script>
+  <script src="js/ui/effects.js"></script>
+  <script src="js/ui/input.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
