@@ -31,8 +31,18 @@ not a dashboard.
 
 These come from Meta's docs and starter kit
 (<https://github.com/facebookincubator/meta-wearables-webapp>,
-<https://wearables.developer.meta.com/docs/develop/webapps>). **None of it
-has been verified on real hardware for this project yet.**
+<https://wearables.developer.meta.com/docs/develop/webapps>).
+
+**Tested on a Meta Ray-Ban Display + Neural Band on 2026-09-26. These all
+work as described below:**
+- All swipes (incl. left/right), pinch and middle pinch
+- The voice composer on the Add Quest box
+- Sound on the speakers, emoji, readability and animation smoothness
+- Timers, reminders and schedules, including after the display turns off
+  and on
+
+Still unconfirmed: whether walking resets the stretch timer via
+`devicemotion` (see ROADMAP).
 
 **Display**
 - 600×600, 30 Hz (a 33 ms frame budget). Don't run 60 fps loops.
@@ -55,7 +65,7 @@ has been verified on real hardware for this project yet.**
   from `input`/`change`.
 - Don't build a custom keyboard.
 
-**Motion sensor**
+**Motion sensor** (not yet confirmed on hardware)
 - Standard `devicemotion`. Request permission from a user gesture where
   `DeviceMotionEvent.requestPermission` exists.
 - Stop listeners when the page is hidden.
@@ -68,8 +78,8 @@ has been verified on real hardware for this project yet.**
 
 **Storage and assets**
 - `localStorage` works.
-- Emoji rendering on the glasses is unverified. The app uses ⏰ ⏱ 🔥 ◆,
-  so keep plain-symbol fallbacks in mind.
+- The emoji the app uses (⏰ ⏱ 🔥 ◆) render on the glasses. Test any new
+  ones on the device before relying on them.
 
 ## Design rules
 
@@ -288,7 +298,9 @@ There's no test framework, on purpose. Verify like this:
 4. **Pin the clock** for time-based tests: set `ui.clockOffsetMs` so `clock()`
    reads e.g. 10:00, and disable `settings.reminders` if nudges would
    interfere.
-5. **On the glasses** (not done yet): see the checklist in `ROADMAP.md`.
+5. **On the glasses:** the core app was verified on 2026-09-26. Re-test on the
+   device after changing gestures, text input, sound or anything time-based.
+   Open items are in `ROADMAP.md`.
 
 Report honestly what was verified and how, and what wasn't
-(e.g. "untested on hardware").
+(e.g. "not yet tested on the glasses").

@@ -4,32 +4,29 @@ What's next for Quest Log // HUD, what we know doesn't work yet, and the
 bigger ideas. AI assistants: check this before starting work, and update it
 when something ships or a limit is discovered.
 
-## 1. Test on the real glasses (highest priority)
+## 1. Hardware testing
 
-Everything so far has been verified in desktop Chrome only. Check on a
-Meta Ray-Ban Display with the Neural Band:
+**Tested on a Meta Ray-Ban Display + Neural Band on 2026-09-26. It works
+well, with no issues found.**
 
-- [ ] **Swipe directions.** Do left/right swipes arrive as `ArrowLeft/Right`?
-      (One source mentioned only up/down.) If not, browsing needs a new
-      gesture plan.
-- [ ] **Pinch and middle pinch** arrive as `Enter` / `Escape`. Is Back on the
-      quest board still passed to the system (exits the app)?
-- [ ] **Voice composer.**
-  - [ ] Pinching `#addInput` opens it.
-  - [ ] Spoken text arrives via the `change` event (if only `input` fires,
-        adjust the listener in section 18).
-- [ ] **Two-pinch confirm.** Is 250ms the right misfire gap for real
-      pinches? Is 3s long enough?
-- [ ] **Motion sensor.** `devicemotion` fires, and walking resets the stretch
-      timer (tune `MOTION_JOLT` / `MOTION_JOLTS_NEEDED`).
-- [ ] **Sound** on the open-ear speakers: levels, and whether UI ticks are
-      audible.
-- [ ] **Emoji** (⏰ ⏱ 🔥 ◆) render. If not, swap them for plain symbols.
-- [ ] **Display off/on.**
-  - [ ] What happens to JS timers while the display is off.
-  - [ ] `visibilitychange` catch-up works: timers, reminders, schedules.
-- [ ] **Performance.** No jank at 30 Hz during level-up (rays, particles).
-- [ ] **Layout.** Text is readable, and nothing is too close to the edges.
+- [x] **Swipes.** All four directions, including left/right browsing.
+- [x] **Pinch and middle pinch** (Enter / Escape), including Back.
+- [x] **Two-pinch confirm** works with the default timings (3s window,
+      250ms misfire gap).
+- [x] **Voice composer.** Pinching the Add Quest box opens it, and the spoken
+      quest arrives in the preview.
+- [x] **Sound** is audible on the open-ear speakers.
+- [x] **Emoji** (⏰ ⏱ 🔥 ◆) render.
+- [x] **Layout** is readable, and animations are smooth at 30 Hz (incl.
+      level-up).
+- [x] **Timers, reminders and scheduled alerts** fire, including catching up
+      after the display turns off and on.
+- [ ] **Motion sensor.** Not specifically checked yet: does walking reset the
+      stretch timer? (`devicemotion` → tune `MOTION_JOLT` /
+      `MOTION_JOLTS_NEEDED` if needed.)
+
+Re-test on the device after changing gestures, text input, sound or
+anything time-based.
 
 ## 2. Next up
 

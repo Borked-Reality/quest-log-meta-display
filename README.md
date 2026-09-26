@@ -27,8 +27,9 @@ app from a URL.
    and [starter kit](https://github.com/facebookincubator/meta-wearables-webapp)
    for developer mode and sharing.
 
-> Nothing here has been tested on real glasses yet. Everything has been tested
-> in desktop Chrome, which simulates the Neural Band with the keyboard.
+> **Tested on a Meta Ray-Ban Display with the Neural Band** (September 2026).
+> The desktop version in Chrome simulates the Band with the keyboard, so it
+> behaves the same way.
 
 ---
 
@@ -143,6 +144,6 @@ QuestLog.player();                                               // current save
 
 ## Status
 
-This is a working prototype, not yet tested on the glasses. See
+This is a working prototype, running on the Meta Ray-Ban Display. See
 [ROADMAP.md](ROADMAP.md) for what's planned and the known platform limits
 (e.g. a web app can't turn the display back on by itself).
