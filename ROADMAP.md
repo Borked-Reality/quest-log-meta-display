@@ -93,7 +93,6 @@ Stats and the collection are done (the Profile screen). Next ideas:
 - [ ] **Weekly/weekday schedules** ("every Monday at 9", "weekdays").
 - [ ] **Board order.** Show due-soon and overdue quests first.
 - [ ] **Multiple timers**, or ask before replacing a running one.
-- [ ] **Achievements** (first quest, 7-day streak, 100 glasses of water…).
 - [ ] **Configurable waking hours** in Settings (currently `CONFIG` 8–21).
 
 ## 3. Bigger features (from the original brief)

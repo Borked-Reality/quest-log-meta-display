@@ -1,5 +1,5 @@
 // Adding quests by voice: the text parser, and the Add → preview → save flow.
-import { prepare, state } from "../lib/helpers.mjs";
+import { prepare, state, noLoot, pinchTwice, showQuest } from "../lib/helpers.mjs";
 
 // [what you say, type, title, schedule shown] — clock pinned to 10:00 AM.
 const CASES = [
@@ -38,4 +38,45 @@ export default async function (t, page, shot) {
   const s = await state(page);
   t.eq([s.screen, s.toast], ["quest", "Quest added!"], "pinch adds it to the board");
   t.eq(await page.eval("[currentQuest().title, currentQuest().type]"), ["Feed the cat", "main"], "…as a main quest");
+
+  // ----- An added DAILY quest comes back every day; a side quest doesn't -----
+  await noLoot(page);
+  const add = async (said) => {
+    await page.key("ArrowUp");
+    await page.type(said);
+    await page.key("Enter");                         // → preview
+    await page.key("Enter");                         // → add
+    const id = await page.eval("currentQuest().id");
+    await page.sleep(1700);                          // let queued pop-ups (achievements) arrive…
+    await prepare(page);                             // …and clear them, so they don't eat a pinch
+    await showQuest(page, id);
+    return id;
+  };
+  const flossId = await add("daily: floss teeth");
+  t.eq(await page.eval("currentQuest().type"), "daily", "\"daily: floss teeth\" is added as a daily quest");
+  await pinchTwice(page);
+  await page.eval("skipRewards(); true");
+  const milkId = await add("buy milk");
+  await pinchTwice(page);
+  await page.eval("skipRewards(); true");
+  const quest = (id) => `QUESTS.find((q) => q.id === ${JSON.stringify(id)})`;
+  t.ok(await page.eval(`${quest(flossId)}.completed && ${quest(milkId)}.completed`), "both are done today");
+
+  // Close and reopen the app (the save is all that survives).
+  const reopen = async () => {
+    await page.eval("location.reload(); true");
+    await page.sleep(300);
+    await page.waitFor("document.readyState === 'complete' && typeof ui !== 'undefined' && typeof el !== 'undefined'");
+    await page.sleep(250);
+  };
+  await reopen();
+  t.ok(await page.eval(`${quest(flossId)}?.completed === true`), "after reopening the same day, the daily is still done");
+
+  // Next day (the reset runs from the background check, like after midnight).
+  await page.eval(`player.lastDailyReset = "2000-01-01"; ui.alertQueue = []; ui.currentAlert = null; runBackgroundChecks(); true`);
+  t.ok(await page.eval(`${quest(flossId)} && !${quest(flossId)}.completed && isAvailable(${quest(flossId)})`),
+    "next day: the added daily quest is back on the board, not done");
+  t.eq(await page.eval(`${quest(milkId)} === undefined`), true, "…and the finished side quest is gone");
+  await reopen();
+  t.ok(await page.eval(`${quest(flossId)} && !${quest(flossId)}.completed`), "…and it stays back after reopening the app");
 }
