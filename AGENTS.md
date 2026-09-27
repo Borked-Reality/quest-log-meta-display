@@ -57,6 +57,13 @@ Still unconfirmed: whether walking resets the stretch timer via
 - Middle pinch → `Escape` (Back)
 - No custom gestures. Pinch is not a positioned pointer event. Pointer Lock
   is unsupported.
+- **Pinch start / end (for hold):** with `touch-action: none` on `html, body`
+  (set in `style.css`), Meta's docs say the glasses *also* send the index pinch
+  as `pointerdown` → `pointerup`, and `Enter` may arrive too. The pinch
+  detector in `js/ui/input.js` merges both.
+  - **Verified on the glasses (2026-09-26):** pinch-and-hold is detected, a
+    double pinch works, and the voice composer still opens and inserts text
+    with `touch-action: none` on.
 
 **Text input**
 - A normal `<input>`/`<textarea>` opens the glasses' **voice/handwriting
@@ -125,6 +132,7 @@ last.
 | `js/config.js` | Tunable numbers | `CONFIG` |
 | `js/data/quests.js` | Starting quest board | `QUESTS`, `BASE_QUEST_COUNT`, `QUEST_TYPE_LABELS`, `INCOMING_QUEST_POOL` |
 | `js/data/loot.js` | Chest items | `RARITIES`, `LOOT_TABLE` (items with a `buff` / `instant` effect, incl. `gamble`), `CHEST_GOLD` |
+| `js/data/achievements.js` | Achievements | `ACHIEVEMENTS` (goal, `progress(player)`, `secret`, `reward: { gold } \| { item }`) |
 | `js/data/shop-items.js` | Shop catalogue | `SHOP_ITEMS` (kind + value + price), `SHOP_KIND_LABELS`, `DEFAULT_EQUIPPED`, `SOUND_PACKS` |
 | `js/core/state.js` | State + saving | `createNewPlayer()`, `player`, `ui`, `settings`, `applySettings()`, `nowMs()`, `clock()`, `saveProgress/loadProgress`, `resetProgress(askFirst)` |
 | `js/core/progression.js` | Levels + streak | `xpNeededFor`, `LEVEL_TITLES`, `titleFor`, `addXp`, `dateKey`, `checkStreak` (uses Streak Shields) |
@@ -133,6 +141,10 @@ last.
 | `js/core/notifications.js` | Alerts | `notify`, `isBusyScreen`, `showNextAlert`, `closeAlert`, `openQuestArmed`, `addQuestToBoard`, `receiveQuest` |
 | `js/features/add-quest.js` | Voice add | `parseQuestText`, `extractSchedule`, `rewardFor`, `showAddScreen` → `submitAddText` → preview → `commitDraftQuest` |
 | `js/features/settings.js` | Settings screen | `SETTINGS_ITEMS`, `changeSetting`, `browseSettings` |
+| `js/features/quest-menu.js` | Quest board pinches | `questTap` (double pinch), `questHold` / `openQuestMenu` (Edit / Remove), `armDouble`, `questActions`/`primaryAction`, `cycleQuestAction`, `runQuestAction`, `removeQuest`/`undoRemove`, `restoreHiddenQuests`, `startEditQuest`/`commitEditedQuest` |
+| `js/features/daily-chest.js` | Daily login chest | `offerDailyChest`, `openDailyChest`, `nextLoginDay`, `minTierForDay` |
+| `js/features/achievements.js` | Achievements logic | `checkAchievements` (runs in `saveProgress`), `announceAchievements`, `recordCompletionForAchievements`, secrets: `trackSecretSequence`, `pokeTheVoid` |
+| `js/features/profile.js` | Profile | `showProfileScreen`, `browseProfile`, `renderProfileScreen`, `profileStats`, `collectionItems` |
 | `js/features/shop.js` | Shop | `applyCosmetics(preview)`, `isOwned`/`isEquipped`, `showShopScreen`, `browseShop`, `previewShopItem`, `shopAction` → `buyItem` / `equipItem` |
 | `js/features/time.js` | Clock, timers, schedules | `formatTime/Date/Countdown/Schedule`, `questMinutes`, `startTimer`/`togglePauseTimer`/`stopTimer`/`finishTimer`, `checkSchedules`, `tick` (1s ticker) |
 | `js/features/daily.js` | Daily reset + nudges | `checkForNewDay`, `announceOpenedQuests`, `checkReminders` |
@@ -140,10 +152,10 @@ last.
 | `js/features/idle.js` | Idle + background | `enterIdle`, `wake`, `runBackgroundChecks` (every 60s), `visibilitychange`, `timeWarp` (dev) |
 | `js/sound/engine.js` | Synth engine | `Sound` (voice / noise / brass, compressor + reverb, music channel, `setPack`), helpers `v` `noise` `brass` `timpani` `crash`, `note()` |
 | `js/sound/sounds.js` | Sound recipes | `SOUNDS`, `SOUND_PREVIEWS`, `toggleSound` |
-| `js/ui/render.js` | Rendering | `el` (**all DOM lookups**), `showScreen`, `renderAll` and friends, `confirmLabel`, `renderControls`, `showAlertScreen` |
+| `js/ui/render.js` | Rendering | `el` (**all DOM lookups**), `showScreen`, `renderAll` and friends, `confirmLabel`, `renderControls`, `showAlertScreen`, `setText` / `setHidden` / `setData` |
 | `js/ui/rewards.js` | Celebrations | `showCompleteScreen`, `showLevelUpScreen`, the treasure chest (`showChestScreen`, reel, `landReel`, `showChestResult`) |
-| `js/ui/effects.js` | Effects | `flashScreen`, `showToast`, `spawnParticles` / `spawnCoins` / `spawnRing` / `spawnSparkles`, `shakeHud`, `countUp`, `animateXpBar` |
-| `js/ui/input.js` | Input | `handleAction(action)`, `KEY_BINDINGS`, keydown/click wiring, `window.QuestLog` API |
+| `js/ui/effects.js` | Effects | `flashScreen`, `showToast`, `spawnParticles` / `spawnCoins` / `spawnRing` / `spawnSparkles`, `shakeHud`, `countUp`, `animateXpBar`, `startDrain`, `warmUpRewards` |
+| `js/ui/input.js` | Input | `handleAction(action)`, `KEY_BINDINGS`, the **pinch detector** (`pinchStart`/`pinchEnd`: tap vs hold, key + pointer copies merged), `window.QuestLog` API |
 | `js/main.js` | Start-up (last) | Load → checks → ticker → first render |
 
 **Adding a new file:**
@@ -176,6 +188,11 @@ last.
   - `itemsFound` (`{ itemId: count }`)
   - Shop: `unlocks` (bought ids), `equipped` (per kind; merged with
     `DEFAULT_EQUIPPED` on load)
+  - Quest menu: `hiddenQuestIds`. Daily chest: `loginStreak`,
+    `lastDailyChest` (+ `lifetime.bestLoginStreak`)
+  - Achievements: `achievements` (`{ id: unlockedAt }`), `counters` (glasses,
+    stretches, timersFinished, questsAdded, undos, kazooQuests, perfectDays,
+    maxGold, questCounts, and the secret flags). Deep-merged on load.
   - `lifetime` (questsCompleted, xpEarned, goldEarned, chestsOpened,
     bestStreak, bestCombo, goldSpent)
 
@@ -201,17 +218,30 @@ timers, `armed`, `undo`, `draftQuest`, `idle`, and similar.
 | `allClear` | Nothing left on the board |
 | `add` | Voice/typed entry → preview |
 | `shop` | Cosmetics: one item per card, live preview |
+| `profile` | Stats card, then the collection grid (◀ ▶ moves the cursor) |
 | `settings` | One setting per card |
 | `complete` → `loot` (treasure chest) → `levelUp` | Reward sequence, driven by `ui.rewardQueue` + `advanceFromRewards()`. The chest comes before the level-up because chest XP can cause the level-up |
 | `alert` | Queued notifications |
 
-- **The vertical stack is `quest ▲ add ▲ shop ▲ settings`.** Swiping up climbs it and
+- **The vertical stack is `quest ▲ add ▲ shop ▲ profile ▲ settings`.** Swiping up climbs it and
   swiping down goes back. Only the board hides the HUD (idle).
 - **Alerts** go through `notify()`. They wait while `isBusyScreen()` (reward,
-  alert, add, shop, settings) and show on `showHome()`, after rewards, or after
+  alert, add, shop, profile, settings) and show on `showHome()`, after rewards, or after
   closing another alert. Stale alerts (quest done or unavailable) are dropped.
-- **Completing takes two pinches** via `confirmTwice()` (quests, final counter
-  step, New round, Reset). Single counter steps are one pinch plus a 5s undo.
+- **Quest board pinches** (`js/features/quest-menu.js`):
+  - **Double pinch** (2nd within `DOUBLE_PINCH_MS`) = main action. A single
+    pinch sets `ui.armed.kind === "double"` and does nothing else.
+  - **Pinch + hold** (`HOLD_MS`) = Edit / Remove menu
+    (`ui.armed.kind === "questMenu"`).
+  - Taps and holds come from the pinch detector as `handleAction("confirm")`
+    / `handleAction("hold")`. A hold anywhere else is treated as a pinch.
+  - Other two-step confirms use `confirmTwice()` (New round, Buy, Reset).
+  - **Undo:** `ui.undo.kind` is "step" (+1 Glass) or "remove". The middle
+    pinch calls `undoLast()`.
+  - **Removed quests:** your own are deleted; built-in ones go into
+    `player.hiddenQuestIds`, which `isAvailable()` respects.
+- **Daily chest:** offered via an alert with `action: "dailyChest"` (start-up,
+  display back on, new day). It waits for a pinch so sound can play.
 
 ## Code conventions
 
@@ -255,6 +285,32 @@ timers, `armed`, `undo`, `draftQuest`, `idle`, and similar.
 
 ## Gotchas (things that have bitten us)
 
+- **Don't animate colours with CSS `filter: hue-rotate`.** It changed nothing
+  on the glasses (desktop Chrome was fine), so Rainbow Road cycles the accent
+  CSS variables from JS instead (`setRainbow` in `js/features/shop.js`).
+  The epic chest's hue-rotate effects were removed for the same reason.
+- **HUD text must stay unselectable** (`user-select: none` on `html, body`).
+  With `touch-action: none`, a pinch-and-move is a drag and would select
+  text. Only `.add-input` is selectable. The `cosmetics` test suite checks
+  this with a real drag.
+
+- **`saveProgress()` also checks achievements.** Unlocking changes `player`
+  (gold, unlocks), and the pop-up is announced ~0.9s later via `notify`
+  (so it waits behind celebrations).
+  - Record progress in `player` *before* saving.
+  - Anything restored from a snapshot (undo) must re-apply its counter
+    *after* the restore.
+- **Achievement-only shop items have `price: null`.** They're owned only via
+  `player.unlocks` (added by the reward). Code that sums or compares prices
+  must handle `null`.
+
+- **`Enter` is not in `KEY_BINDINGS`.** The pinch detector handles it
+  (keydown starts, keyup ends), so tap vs hold works. Tests that need a hold
+  use `page.hold()`; the glasses' pointer copy is `page.pointer("down"/"up")`.
+- **Don't remove `touch-action: none`** from `html, body`: without it the
+  glasses (per Meta's docs) only send a finished pinch, so holds can't be
+  detected.
+
 - **Cosmetics must never change the balance.** Only looks and sound. The
   background stays black and red stays "warning" in every theme.
 - **Leaving the Shop must restore the equipped look.** `showScreen()` calls
@@ -280,7 +336,7 @@ timers, `armed`, `undo`, `draftQuest`, `idle`, and similar.
   it on any path that leaves the chest (`showChestResult`, `skipRewards`).
 - **Music plays on its own channel** (`Sound.startMusic()` /
   `stopMusic()`), so it can be cut off. `clearRewardTimers()` stops it and
-  the chest's reel-watching frame loop.
+  the chest's coin fountain.
 - **Apply power-up multipliers** (`buffMult("xp")` / `buffMult("gold")`)
   anywhere XP or gold is earned from a quest.
 
@@ -310,6 +366,34 @@ timers, `armed`, `undo`, `draftQuest`, `idle`, and similar.
   animations mid-way. To judge the final layout, disable animations with an
   injected stylesheet.
 
+## Performance (measured on the glasses profile)
+
+Measured in Chrome at 12× CPU slowdown, 600×600, 500 Kbps / 150 ms. That is
+the profile from Meta's optimize skill. What mattered:
+
+- **Don't toggle classes, attributes or CSS variables on `.hud` or `:root`
+  during effects.** That restyles all ~300 elements (hundreds of ms on the
+  glasses). `shakeHud` uses a Web Animation on `.hud` for this reason.
+  Rainbow Road is the one deliberate exception (4×/s, paused while idle).
+- **Animate with the Web Animations API or CSS `transform`/`opacity`,** not
+  per-frame JS. The reel spin and the confirm drain are single
+  `element.animate()` calls, and the reel ticks are scheduled from the easing
+  curve up front.
+- **No forced reflows to restart animations.** Use `restartClass()` (a double
+  `requestAnimationFrame`), not `void node.offsetWidth`.
+- **Per-second renders write only what changed.** Use `setText` / `setHidden` /
+  `setData` (`js/ui/render.js`). Rewriting the same text still redoes layout.
+- **Varying `font-size` per element is slow.** Each new size of an emoji or
+  symbol is shaped again. Coins use one font size and scale with
+  `transform` (`--s`).
+- **First-time layout is the big cost** (fonts, emoji, reel rows: the first
+  chest took ~1.4s to lay out). `warmUpRewards()` (`js/ui/effects.js`) lays
+  the chest and level-up screens out once, hidden, a step at a time, 3s after
+  start-up. That brought the first chest down to ~0.1s. If you add a heavy
+  reward screen, add it there.
+- **Load:** ~270 KB of HTML/CSS/JS, ~77 KB gzipped. GitHub Pages gzips and
+  serves HTTP/2, so there's no build step. The fonts load only when picked.
+
 ## How to…
 
 **Add a screen:**
@@ -337,6 +421,15 @@ timers, `armed`, `undo`, `draftQuest`, `idle`, and similar.
    - **coin:** just the character.
 3. Run the overflow check (see *Testing*) for any new font or theme.
 
+**Add an achievement:**
+1. An entry in `ACHIEVEMENTS` (`js/data/achievements.js`) with `goal` and
+   `progress(player)`.
+2. If nothing records that progress yet, add a counter to
+   `player.counters` (`createNewPlayer`) and increment it where it happens.
+3. For a cosmetic reward, add a `price: null, achievement: "<id>"` item to
+   `SHOP_ITEMS` and its CSS.
+4. Extend `tests/suites/achievements.mjs`.
+
 **Add a setting:**
 1. A default in `settings`.
 2. An entry in `SETTINGS_ITEMS`.
@@ -354,7 +447,22 @@ timers, `armed`, `undo`, `draftQuest`, `idle`, and similar.
 
 ## Testing
 
-There's no test framework, on purpose. Verify like this:
+**Run `node tests/run.mjs` before handing back any change.** It uses Node
+22+ and Chrome, with no npm. It syntax-checks every file, then drives the
+real `index.html` in headless Chrome with real key presses, suite by suite,
+each from an empty save. Suites live in `tests/suites/`. Shared helpers
+(`prepare` pins the clock to 10:00 and clears start-up alerts, plus
+`showQuest`, `forceLoot`/`noLoot`, `pinchTwice`) are in
+`tests/lib/helpers.mjs`.
+
+- **Add or extend a suite** for any new behaviour. Use `t.ok` / `t.eq` with
+  names that read like a sentence.
+- **Prove a new test can fail:** break the code on purpose once, see it go
+  red, then restore.
+- **Screenshots:** `--shots` saves them to `tests/screenshots/`
+  (git-ignored). Look at them after visual changes.
+
+The manual and low-level techniques below still apply:
 
 1. **Syntax:** run `node --check` on each file, e.g.
    `for f in $(find js -name "*.js"); do node --check "$f"; done`.

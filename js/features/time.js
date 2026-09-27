@@ -129,6 +129,7 @@ function finishTimer() {
   const timer = player.timer;
   timer.done = true;
   timer.pausedRemaining = null;
+  player.counters.timersFinished += 1;
   saveProgress();
   const quest = QUESTS.find((q) => q.id === timer.questId);
   Sound.play("timerDone");

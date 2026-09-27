@@ -30,9 +30,24 @@ anything time-based.
 
 ## 2. Next up
 
-- [ ] **Edit and delete quests.** There's no way to remove a mis-heard or
-      finished-with quest yet (added dailies repeat forever). For example: a
-      "Remove" option when viewing a quest you added.
+- [x] **Edit and delete quests** via the quest menu, with undo and restore
+      (2026-09-26).
+- [x] **Daily login chest** with streak-based rarity (2026-09-26).
+- [x] **Profile: stats + collection** (2026-09-26).
+- [x] **Automated tests** in `tests/` (2026-09-26).
+- [x] **Double pinch to complete, pinch + hold for Edit / Remove**
+      (2026-09-26).
+- [ ] **Test achievements on the glasses:** the pop-up fanfare, Rainbow Road's
+      hue cycling at 30 Hz, and the ↑↑↓↓◀▶◀▶ secret with real swipes.
+- [ ] **Test the new stuff on the glasses:**
+  - [x] **Pinch + hold opens the menu** (verified 2026-09-26).
+  - [x] **A double pinch works.** 600 ms felt rushed, so the default is now
+        1 s and it's adjustable in Settings.
+  - [x] **Voice add / edit still opens the composer** with
+        `touch-action: none`.
+  - [ ] The menu chips are readable.
+  - [ ] The daily chest's first-pinch sound plays.
+  - [ ] The collection grid is readable.
 - [x] **Loot that does something.** Treasure chests give timed power-ups,
       Streak Shields and Chest Keys (2026-09-26).
 - [x] **Over-the-top chest** + 26 items + collection/stats recording
@@ -52,18 +67,18 @@ anything time-based.
 - [ ] **More shop stuff:** HUD frames, level-up fanfare variants,
       particle styles, titles/nameplates, seasonal items, a daily "deal".
 
-### Stats, inventory, collection (planned)
+### Inventory and more (planned)
 
-The data is already being recorded (`player.lifetime`, `player.itemsFound`),
-so these screens will have history from day one. A suggested plan:
+Stats and the collection are done (the Profile screen). Next ideas:
 
-- **Where they live.** Maybe a `▲ Profile` level (Quest ▲ Add ▲ Shop ▲
-  Profile ▲ Settings) with ◀ ▶ cards for Stats / Collection / Inventory.
-- **Stats.** Cards for lifetime numbers (quests, XP, gold, chests, best
-  streak, best combo). Also worth recording: per-day history for streak
-  calendars and charts.
-- **Collection.** "Found 14 / 26 items", with unfound ones shown as ❓
-  silhouettes (`itemsFound`).
+- **Per-day history** for streak calendars and charts on the Profile.
+- [x] **Achievements** (30, 9 secret) with achievement-only cosmetics
+  (2026-09-26).
+- **More secrets / seasonal achievements** (holidays, streak milestones,
+  hidden gestures).
+- **Rotating shop deal:** one discounted item per day.
+- **Streak-at-risk** evening warning, and a 10-minute **heads-up** before
+  scheduled quests.
 - **Inventory.** Let some chest items go to a backpack instead of applying
   instantly, so you can activate a 2× XP potion when you choose.
   - Needs: `player.inventory: [{ itemId, count }]` and a "use" action.

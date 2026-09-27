@@ -25,7 +25,7 @@ function resetIdleTimer() {
 function enterIdle() {
   // Reward screens advance on their own; wait until they're done.
   // And don't fade out while someone might be dictating a new quest.
-  if (isOnRewardScreen() || ["add", "shop", "settings"].includes(ui.screen)) { resetIdleTimer(); return; }
+  if (isOnRewardScreen() || ["add", "shop", "profile", "settings"].includes(ui.screen)) { resetIdleTimer(); return; }
   ui.idle = true;
   renderGlance();
   el.hud.classList.add("is-idle");
@@ -79,6 +79,7 @@ document.addEventListener("visibilitychange", () => {
     wake();
     runBackgroundChecks();
     startBackgroundChecks();
+    offerDailyChest();             // first time the display is on today?
   }
 });
 

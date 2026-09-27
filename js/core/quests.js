@@ -13,6 +13,7 @@ function currentQuest() {
 // Timed quests (with a `window`) are only on the board during their hours.
 // Scheduled quests (with `dueAt`) appear on the day they're due.
 function isAvailable(quest) {
+  if (player.hiddenQuestIds.includes(quest.id)) return false;   // removed (built-in)
   if (quest.dueAt && dateKey(new Date(quest.dueAt)) > dateKey(clock())) return false;
   if (!quest.window) return true;
   const hour = clock().getHours();
@@ -136,6 +137,7 @@ function completeQuest(quest) {
   player.lifetime.xpEarned += gains.xp;
   player.lifetime.goldEarned += gains.gold;
   player.lifetime.bestStreak = Math.max(player.lifetime.bestStreak, player.streak);
+  recordCompletionForAchievements(quest);
 
   // 6. maybe a treasure chest (its item is applied now, shown later)
   const loot = rollForLoot();
@@ -182,6 +184,8 @@ function logQuestStep(quest) {
   const snapshot = JSON.stringify(player);            // for undo
   const count = progressOf(quest) + 1;
   player.questProgress[quest.id] = count;
+  if (quest.id === "hydrate") player.counters.glasses += 1;          // (achievements)
+  if (quest.id === "stretch") player.counters.stretches += 1;
   ui.lastReminderAt[quest.id] = nowMs();              // don't nag right after
   if (quest.reminder && quest.reminder.kind === "still") markActive();
 
@@ -255,6 +259,7 @@ function confirmTwice(kind, questId = null) {
     at: Date.now(),
     timer: setTimeout(() => disarm(false), CONFIG.CONFIRM_WINDOW_MS),
   };
+  startDrain(CONFIG.CONFIRM_WINDOW_MS);
   Sound.play("arm");
   renderControls();
   return false;
@@ -272,6 +277,7 @@ function disarm(silent) {
 function startUndo(quest, snapshot) {
   clearUndo();
   ui.undo = {
+    kind: "step",
     snapshot,
     questId: quest.id,
     timer: setTimeout(clearUndo, CONFIG.UNDO_WINDOW_MS),
@@ -284,6 +290,14 @@ function clearUndo() {
   clearTimeout(ui.undo.timer);
   ui.undo = null;
   renderControls();
+}
+
+// Middle pinch during the undo window: undo a +1 step or a removal.
+function undoLast() {
+  if (ui.undo.kind === "remove") undoRemove();
+  else undoLastStep();
+  player.counters.undos += 1;          // after the restore, so it sticks
+  saveProgress();
 }
 
 // Puts the player back exactly as before the last +1 step.
@@ -327,9 +341,6 @@ function clearRewardTimers() {
   clearTimeout(ui.advanceTimer);
   ui.effectTimers.forEach(clearTimeout);
   ui.effectTimers = [];
-  if (ui.chest) {                                     // chest reel watcher + coin fountain
-    cancelAnimationFrame(ui.chest.raf);
-    clearInterval(ui.chest.coinTimer);
-  }
+  if (ui.chest) clearInterval(ui.chest.coinTimer);   // chest coin fountain
   Sound.stopMusic();                                  // chest slot music
 }

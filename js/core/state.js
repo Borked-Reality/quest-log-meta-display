@@ -29,6 +29,11 @@ function createNewPlayer() {
     guaranteedDrops: 0,        // next N quests always drop a chest
     // Shop: ids bought, and what's equipped per kind (see SHOP_ITEMS).
     unlocks: [],
+    // Quest menu: built-in quests you removed (restore them in Settings).
+    hiddenQuestIds: [],
+    // Daily login chest.
+    loginStreak: 0,            // consecutive days a daily chest was opened
+    lastDailyChest: null,      // "YYYY-MM-DD"
     equipped: { ...DEFAULT_EQUIPPED },
     // Recorded now for the future inventory / stats / store screens:
     itemsFound: {},            // { itemId: timesFound }
@@ -40,6 +45,24 @@ function createNewPlayer() {
       bestStreak: 0,
       bestCombo: 0,
       goldSpent: 0,
+      bestLoginStreak: 0,
+    },
+    // Achievements: { id: unlockedAtMs } (see js/data/achievements.js)
+    achievements: {},
+    // Counters that only achievements need.
+    counters: {
+      glasses: 0,              // glasses of water logged, ever
+      stretches: 0,            // stretch breaks logged, ever
+      timersFinished: 0,
+      questsAdded: 0,          // by voice / typing
+      undos: 0,
+      kazooQuests: 0,          // quests completed with the kazoo pack on
+      perfectDays: 0,          // days every daily quest was done
+      lastPerfectDay: null,
+      maxGold: 0,              // most gold held at once
+      questCounts: {},         // { questId: times completed }
+      // Secrets (0 / 1)
+      konami: 0, pokedVoid: 0, goldenPotato: 0, zeroScratch: 0, nightOwl: 0, earlyBird: 0,
     },
   };
 }
@@ -53,8 +76,15 @@ const ui = {
   screen: "quest",
   settingsIndex: 0,    // which setting card is showing
   shopIndex: 0,        // which shop card is showing
+  profileIndex: 0,     // profile: 0 = stats, 1… = collection item
+  editingQuestId: null, // Add card is editing this quest (quest menu → Edit)
+  newAchievements: [],  // unlocked, waiting to be announced
+  achievementTimer: null,
+  recentActions: [],   // for the ↑↑↓↓◀▶◀▶ secret
+  voidPokes: 0,        // holds on the all-clear screen (secret)
   shopPreviewTimer: null,
   coinGlyph: "◆",      // what the coin fountain throws (equipped coin rain)
+  rainbowTimer: null,  // Rainbow Road theme colour cycling
   tickTimer: null,     // 1-second clock / timer ticker
   rewardQueue: [],     // reward screens still to show (level up, loot)
   moveOnAfterRewards: true,  // after rewards: next quest (true) or stay (false)
@@ -84,6 +114,7 @@ const settings = {
   volume: 0.8,              // 0.25 | 0.5 | 0.8 | 1
   clock24: false,           // 24-hour clock?
   twoPinchComplete: true,   // completing needs a 2nd pinch
+  doublePinchMs: 1000,      // time allowed for the 2nd pinch: 600 | 800 | 1000 | 1300
   autoHideSeconds: 20,      // 10 | 20 | 30 | 60 | 0 (never)
   reminders: true,          // hydration / stretch nudges
   timers: true,             // quests with a duration start a timer
@@ -94,6 +125,7 @@ function applySettings() {
   CONFIG.SOUND_VOLUME = settings.volume;
   CONFIG.IDLE_AFTER_MS = settings.autoHideSeconds * 1000;
   CONFIG.CONFIRM_WINDOW_MS = settings.twoPinchComplete ? 3000 : 0;
+  CONFIG.DOUBLE_PINCH_MS = settings.doublePinchMs;
   if (Sound.master) Sound.master.gain.value = settings.volume;
 }
 
@@ -109,6 +141,7 @@ function minutesSince(ms) { return (nowMs() - ms) / 60000; }
 // access is wrapped. The app still works without it; it just won't save.
 
 function saveProgress() {
+  checkAchievements();                 // anything saved might unlock one
   try {
     localStorage.setItem(CONFIG.SAVE_KEY, JSON.stringify(player));
   } catch (err) {
@@ -125,6 +158,7 @@ function loadProgress() {
       // Nested objects need their own merge so newly added stats get defaults.
       player.lifetime = { ...createNewPlayer().lifetime, ...player.lifetime };
       player.equipped = { ...DEFAULT_EQUIPPED, ...player.equipped };
+      player.counters = { ...createNewPlayer().counters, ...player.counters };
     }
   } catch (err) {
     console.warn("Could not load progress:", err);

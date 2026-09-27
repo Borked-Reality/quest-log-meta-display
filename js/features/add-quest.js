@@ -140,6 +140,7 @@ function submitAddText() {
     showToast("Didn't catch that");
     return;
   }
+  if (ui.editingQuestId) applyEditDefaults(draft);    // keep the old type
   ui.draftQuest = draft;
   el.addInput.blur();
   Sound.play("click");
@@ -158,6 +159,8 @@ function cycleDraftType(direction) {
 
 // Pinch on the preview: it's on the board.
 function commitDraftQuest() {
+  if (ui.editingQuestId) { commitEditedQuest(); return; }   // quest menu → Edit
+  player.counters.questsAdded += 1;
   const quest = addQuestToBoard({ ...ui.draftQuest, id: `my-${Date.now()}` });
   ui.draftQuest = null;
 

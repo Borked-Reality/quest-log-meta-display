@@ -19,6 +19,7 @@ const el = {
     add: document.getElementById("screenAdd"),
     settings: document.getElementById("screenSettings"),
     shop: document.getElementById("screenShop"),
+    profile: document.getElementById("screenProfile"),
   },
 
   clockTime: document.getElementById("clockTime"),
@@ -36,6 +37,28 @@ const el = {
   settingValue: document.getElementById("settingValue"),
   settingNote: document.getElementById("settingNote"),
   settingPager: document.getElementById("settingPager"),
+
+  questMenu: document.getElementById("questMenu"),
+  addLabel: document.getElementById("addLabel"),
+  addExamples: document.getElementById("addExamples"),
+  chestTitle: document.getElementById("chestTitle"),
+  profileKind: document.getElementById("profileKind"),
+  profileStats: document.getElementById("profileStats"),
+  profileName: document.getElementById("profileName"),
+  profileStatsGrid: document.getElementById("profileStatsGrid"),
+  profileCollection: document.getElementById("profileCollection"),
+  profileAchievements: document.getElementById("profileAchievements"),
+  achievementGrid: document.getElementById("achievementGrid"),
+  achName: document.getElementById("achName"),
+  achDesc: document.getElementById("achDesc"),
+  achProgress: document.getElementById("achProgress"),
+  achBarFill: document.getElementById("achBarFill"),
+  achProgressText: document.getElementById("achProgressText"),
+  collectionGrid: document.getElementById("collectionGrid"),
+  collectionDetail: document.getElementById("collectionDetail"),
+  collectionName: document.getElementById("collectionName"),
+  collectionEffect: document.getElementById("collectionEffect"),
+  profilePager: document.getElementById("profilePager"),
 
   addInput: document.getElementById("addInput"),
   addEntry: document.getElementById("addEntry"),
@@ -105,6 +128,7 @@ const el = {
   hintHideLabel: document.getElementById("hintHideLabel"),
   hintConfirm: document.getElementById("hintConfirm"),
   hintConfirmLabel: document.getElementById("hintConfirmLabel"),
+  hintConfirmKey: document.getElementById("hintConfirmKey"),
 
   confirmButton: document.getElementById("confirmButton"),
   navButtons: document.querySelectorAll(".btn-nav"),
@@ -131,7 +155,8 @@ function showScreen(name) {
   });
   // Any screen change cancels a half-done confirm or pending undo.
   if (ui.armed) { clearTimeout(ui.armed.timer); ui.armed = null; }
-  if (ui.undo && name !== "quest") { clearTimeout(ui.undo.timer); ui.undo = null; }
+  if (ui.undo && name !== "quest" && name !== "allClear") { clearTimeout(ui.undo.timer); ui.undo = null; }
+  if (name !== "add") ui.editingQuestId = null;
 
   // Leaving the add card: drop focus so the text box stops taking keys.
   if (name !== "add" && document.activeElement === el.addInput) {
@@ -150,32 +175,44 @@ function renderAll() {
   renderTimer();
 }
 
+// Per-second renders only touch the page when something really changed:
+// rewriting the same text or attribute still makes the glasses redo layout.
+function setText(node, text) {
+  if (node.textContent !== text) node.textContent = text;
+}
+function setHidden(node, hidden) {
+  if (node.hidden !== hidden) node.hidden = hidden;
+}
+function setData(node, key, value) {
+  if (node.dataset[key] !== value) node.dataset[key] = value;
+}
+
 // Header: "3:42 PM  THU 25 SEP"
 function renderClock() {
   const now = clock();
-  el.clockTime.textContent = formatTime(now);
-  el.clockDate.textContent = formatDate(now);
+  setText(el.clockTime, formatTime(now));
+  setText(el.clockDate, formatDate(now));
 }
 
 // The countdown on the quest card + the small ⏱ badge in the header.
 function renderTimer() {
   const timer = player.timer;
-  el.timerBadge.hidden = !timer;
-  if (timer) el.timerBadge.textContent = timer.done ? "⏱ Done" : `⏱ ${formatCountdown(timerRemaining(timer))}`;
+  setHidden(el.timerBadge, !timer);
+  if (timer) setText(el.timerBadge, timer.done ? "⏱ Done" : `⏱ ${formatCountdown(timerRemaining(timer))}`);
   el.timerBadge.classList.toggle("is-paused", !!timer && timer.pausedRemaining != null);
 
   const quest = currentQuest();
   const show = ui.screen === "quest" && quest && !quest.completed && hasTimer(quest);
-  el.questTimer.hidden = !show;
+  setHidden(el.questTimer, !show);
   el.screens.quest.classList.toggle("has-timer", !!show);
   if (!show) return;
 
   const own = timerFor(quest);
   const total = questMinutes(quest) * 60000;
   const remaining = own ? timerRemaining(own) : total;
-  el.questTimerTime.textContent = own && own.done ? "Done!" : formatCountdown(remaining);
+  setText(el.questTimerTime, own && own.done ? "Done!" : formatCountdown(remaining));
   el.questTimerFill.style.width = `${(1 - remaining / total) * 100}%`;
-  el.questTimer.dataset.state = !own ? "ready" : own.done ? "done" : own.pausedRemaining != null ? "paused" : "running";
+  setData(el.questTimer, "state", !own ? "ready" : own.done ? "done" : own.pausedRemaining != null ? "paused" : "running");
 }
 
 function renderStats() {
@@ -197,8 +234,8 @@ function renderBuffs() {
   if (chips.length > 3) shown.push(`+${chips.length - 3}`);
   if (ui.pendingReveal) shown.length = 0;             // chest not opened yet
   const text = shown.join("  ");
-  if (el.buffBar.textContent !== text) el.buffBar.textContent = text;   // cheap on every tick
-  el.buffBar.hidden = shown.length === 0;
+  setText(el.buffBar, text);
+  setHidden(el.buffBar, shown.length === 0);
 }
 
 function renderXp() {
@@ -242,7 +279,7 @@ function renderQuest() {
 
   // Position among quests currently on the board.
   const board = availableQuests();
-  el.questPager.textContent = `${board.indexOf(quest) + 1} / ${board.length}`;
+  el.questPager.textContent = `${board.indexOf(quest) + 1} / ${board.length}  ·  hold pinch: options`;
 }
 
 function isOnRewardScreen() {
@@ -257,26 +294,26 @@ function stepLabel(quest) {
 // What "confirm" (pinch / Enter) means on the current screen.
 // Shared by the on-glasses hint and the browser test button.
 function confirmLabel() {
+  if (isQuestMenuOpen()) return { text: ui.armed.actions[ui.armed.index].label, enabled: true };
+  if (isDoubleArmed()) return { text: "Again!", enabled: true };
   if (ui.armed) return { text: "Confirm!", enabled: true };
-  if (ui.screen === "settings") return { text: currentSettingItem().action ? "Reset" : "Change", enabled: true };
+  if (ui.screen === "profile") return { text: "—", enabled: false };
+  if (ui.screen === "settings") {
+    const item = currentSettingItem();
+    return { text: item.key === "reset" ? "Reset" : item.key === "restore" ? "Restore" : "Change", enabled: true };
+  }
   if (ui.screen === "shop") {
     const item = currentShopItem();
     if (isOwned(item)) return isEquipped(item) ? { text: "Equipped ✓", enabled: false } : { text: "Equip", enabled: true };
+    if (item.price == null) return { text: "Locked", enabled: true };
     if (player.gold < item.price) return { text: `Need ${item.price - player.gold} ◆`, enabled: true };
     return { text: `Buy ${item.price} ◆`, enabled: true };
   }
   if (ui.screen === "quest") {
     const quest = currentQuest();
-    if (quest.completed) return { text: "Done ✓", enabled: false };
-    const timer = timerFor(quest);
-    if (hasTimer(quest) && !(timer && timer.done)) {
-      if (!timer) return { text: `Start ${questMinutes(quest)} min`, enabled: true };
-      return { text: timer.pausedRemaining != null ? "Resume" : "Pause", enabled: true };
-    }
-    if (isCounter(quest) && progressOf(quest) + 1 < quest.target) {
-      return { text: stepLabel(quest), enabled: true };
-    }
-    return { text: isCounter(quest) ? "Finish" : "Complete", enabled: true };
+    // Double pinch does this (hold opens Edit / Remove).
+    const primary = primaryAction(quest);
+    return { text: primary ? primary.label : "Hold: options", enabled: true };
   }
   if (ui.screen === "allClear") return { text: "New round", enabled: true };
   if (ui.screen === "add") return { text: ui.draftQuest ? "Add" : "Speak", enabled: true };
@@ -285,6 +322,7 @@ function confirmLabel() {
     const quest = alert && alert.questId && QUESTS.find((q) => q.id === alert.questId);
     if (quest && alert.action === "log" && !quest.completed) return { text: stepLabel(quest), enabled: true };
     if (quest && alert.action === "finish" && !quest.completed) return { text: "Finish", enabled: true };
+    if (alert && alert.kind === "achievement") return { text: alert.action === "equipReward" ? "Equip" : "Nice!", enabled: true };
     return { text: quest ? "View" : "OK", enabled: true };
   }
   // The chest can't be skipped: enjoy the show.
@@ -300,10 +338,15 @@ function renderControls() {
 
   // On-glasses gesture hints
   el.hintConfirmLabel.textContent = confirm.text;
+  // On the quest board the main action is a DOUBLE pinch.
+  const doubleOnBoard = ui.screen === "quest" && CONFIG.CONFIRM_WINDOW_MS && !isQuestMenuOpen() && !isDoubleArmed()
+    && currentQuest() && primaryAction(currentQuest());
+  el.hintConfirmKey.textContent = doubleOnBoard ? "PINCH ×2" : "PINCH";
   el.hintConfirm.classList.toggle("is-disabled", !confirm.enabled);
   el.hintBrowse.classList.toggle("is-off", !canBrowse);
   el.hintBrowseLabel.textContent =
-    ui.screen === "add" && ui.draftQuest ? "Type" : ui.screen === "settings" ? "Setting" : "Browse";
+    isQuestMenuOpen() ? "Action"
+    : ui.screen === "add" && ui.draftQuest ? "Type" : ui.screen === "settings" ? "Setting" : "Browse";
 
   // Armed (after the 1st pinch): gold pinch hint + draining confirm bar.
   el.hud.classList.toggle("is-armed", !!ui.armed);
@@ -317,7 +360,8 @@ function renderControls() {
   let middle = ["▼", "Hide"];
   if (ui.undo) middle = ["BACK", "Undo"];
   else if (runningTimer) middle = ["BACK", "Stop"];
-  else if (["add", "shop", "settings"].includes(ui.screen)) middle = ["▼", "Back"];
+  if (isQuestMenuOpen()) middle = ["BACK", "Cancel"];
+  else if (["add", "shop", "profile", "settings"].includes(ui.screen)) middle = ["▼", "Back"];
   el.hintHideKey.textContent = middle[0];
   el.hintHideLabel.textContent = middle[1];
   el.hintHide.classList.toggle("is-undo", middle[0] === "BACK");
@@ -326,6 +370,8 @@ function renderControls() {
   if (ui.screen === "add") renderAddScreen();
   if (ui.screen === "settings") renderSettingsScreen();
   if (ui.screen === "shop") renderShopScreen();
+  if (ui.screen === "profile") renderProfileScreen();
+  renderQuestMenu();
 
   // Browser test buttons
   el.confirmButton.textContent = confirm.text.toUpperCase();
@@ -335,6 +381,11 @@ function renderControls() {
 
 function renderAddScreen() {
   const draft = ui.draftQuest;
+  const editing = editingQuest();
+  el.addLabel.textContent = editing ? "✎ EDIT QUEST" : "+ ADD QUEST";
+  el.addExamples.textContent = editing
+    ? `Now: “${editing.title}” · say the new version`
+    : "“Call mom at 3pm” · “Daily: stretch 10 minutes” · “Pay rent tomorrow”";
   el.addEntry.hidden = !!draft;
   el.addPreview.hidden = !draft;
   if (!draft) return;
@@ -359,12 +410,31 @@ function renderShopScreen() {
   el.shopChest.style.display = item.kind === "chest" ? "" : "none";
   el.shopChest.dataset.skin = item.value;
   el.shopName.textContent = item.name;
-  el.shopDesc.textContent = item.desc;
+  const unlockBy = item.achievement && ACHIEVEMENTS.find((a) => a.id === item.achievement);
+  el.shopDesc.textContent = unlockBy && !isOwned(item)
+    ? `${item.desc} · 🏆 ${unlockBy.secret ? "secret achievement" : unlockBy.name}`
+    : item.desc;
   el.shopPager.textContent = `${ui.shopIndex + 1} / ${SHOP_ITEMS.length}`;
 
   const owned = isOwned(item);
-  el.shopPrice.textContent = owned ? (isEquipped(item) ? "EQUIPPED ✓" : "OWNED") : `${item.price} ◆`;
-  el.shopPrice.dataset.state = owned ? "owned" : player.gold >= item.price ? "buy" : "poor";
+  const locked = !owned && item.price == null;
+  el.shopPrice.textContent = owned ? (isEquipped(item) ? "EQUIPPED ✓" : "OWNED") : locked ? "🔒 EARN IT" : `${item.price} ◆`;
+  el.shopPrice.dataset.state = owned ? "owned" : locked ? "locked" : player.gold >= item.price ? "buy" : "poor";
+}
+
+// The quest menu chips inside the confirm bar: [✓ Complete] [✎ Edit] [✕ Remove]
+function renderQuestMenu() {
+  const menu = isQuestMenuOpen() ? ui.armed : null;
+  el.hud.classList.toggle("has-quest-menu", !!menu);
+  el.questMenu.innerHTML = "";
+  if (!menu) return;
+  menu.actions.forEach((action, i) => {
+    const chip = document.createElement("span");
+    chip.dataset.id = action.id;
+    chip.textContent = `${action.icon} ${action.label}`;
+    chip.classList.toggle("is-selected", i === menu.index);
+    el.questMenu.appendChild(chip);
+  });
 }
 
 function renderSettingsScreen() {
@@ -372,16 +442,16 @@ function renderSettingsScreen() {
   el.settingLabel.textContent = item.label;
   el.settingValue.textContent = settingValueLabel(item);
   el.settingValue.hidden = !!item.action;
-  el.settingNote.textContent = item.note || "Pinch to change";
+  el.settingNote.textContent = item.key === "restore"
+    ? (player.hiddenQuestIds.length ? `${player.hiddenQuestIds.length} built-in removed · pinch to restore` : "Nothing removed")
+    : item.note || "Pinch to change";
   el.settingPager.textContent = `${ui.settingsIndex + 1} / ${SETTINGS_ITEMS.length}`;
-  el.screens.settings.classList.toggle("is-danger", !!item.action);
+  el.screens.settings.classList.toggle("is-danger", !!item.danger);
 }
 
 // Briefly pulses a hint so the wearer sees their gesture registered.
 function pulseHint(node) {
-  node.classList.remove("is-pressed");
-  void node.offsetWidth;              // restart the CSS animation
-  node.classList.add("is-pressed");
+  restartClass(node, "is-pressed");
 }
 
 function renderSoundToggle() {
@@ -392,24 +462,24 @@ function renderSoundToggle() {
 function renderGlance() {
   const quest = currentQuest();
   if (ui.screen === "alert" && ui.currentAlert) {
-    el.glanceLabel.textContent = `● ${ui.currentAlert.label}`;
-    el.glanceText.textContent = ui.currentAlert.title;
-    el.hud.dataset.glance = "alert";
+    setText(el.glanceLabel, `● ${ui.currentAlert.label}`);
+    setText(el.glanceText, ui.currentAlert.title);
+    setData(el.hud, "glance", "alert");
   } else {
     // Idle glance: the time on top, then a running timer, or the quest.
     const timer = player.timer;
     const timerQuest = timer && QUESTS.find((q) => q.id === timer.questId);
-    el.glanceLabel.textContent = formatTime(clock());
+    setText(el.glanceLabel, formatTime(clock()));
     if (timerQuest) {
-      el.glanceText.textContent = `⏱ ${timer.done ? "Done" : formatCountdown(timerRemaining(timer))} · ${timerQuest.title}`;
+      setText(el.glanceText, `⏱ ${timer.done ? "Done" : formatCountdown(timerRemaining(timer))} · ${timerQuest.title}`);
     } else if (ui.screen === "allClear") {
-      el.glanceText.textContent = "All quests clear";
+      setText(el.glanceText, "All quests clear");
     } else {
-      el.glanceText.textContent = isCounter(quest) && !quest.completed
+      setText(el.glanceText, isCounter(quest) && !quest.completed
         ? `${quest.title} · ${progressOf(quest)}/${quest.target}`
-        : quest.title;
+        : quest.title);
     }
-    el.hud.dataset.glance = "";
+    setData(el.hud, "glance", "");
   }
 }
 
@@ -421,4 +491,11 @@ function showAlertScreen(alert) {
   el.alertDetail.textContent = alert.detail || "";
   showScreen("alert");
   renderAll();
+  if (alert.kind === "achievement") {                 // 🏆 fanfare
+    Sound.play("achievement");
+    flashScreen("gold");
+    spawnParticles("var(--gold)", 24);
+    setTimeout(() => ["var(--green)", "var(--cyan)", "var(--purple)"].forEach((c) => spawnParticles(c, 8)), 300);
+    spawnSparkles(10, "var(--gold)");
+  }
 }

@@ -28,6 +28,22 @@
 
 * { box-sizing: border-box; }
 
+/* Makes the glasses also send the index pinch as a pointer press + release
+   (pointerdown / pointerup), which is how a HOLD can be detected. See the
+   pinch detector in js/ui/input.js and Meta's "drag channel" docs. Also
+   turns off browser touch scrolling / zooming. */
+html,
+body { touch-action: none; }
+
+/* A pinch-and-move is a drag, which would select text like a mouse does.
+   Nothing on the HUD is meant to be selected (the voice box is, below). */
+html,
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -44,6 +60,9 @@ body {
 
 /* ---------- The 600x600 stage ---------- */
 .hud {
+  /* Fixed-size box: changes inside never make the browser re-lay-out
+     anything outside it (and vice versa). */
+  contain: layout style;
   position: relative;
   width: 600px;
   height: 600px;
@@ -110,11 +129,14 @@ body {
 
 /* ---------- Screen area ---------- */
 .screen-area {
+  /* A particle, coin or changing number only re-lays-out this area. */
+  contain: size layout style;
   position: relative;
   flex: 1;
 }
 
 .screen {
+  contain: size layout style;
   position: absolute;
   inset: 0;
   display: flex;
@@ -127,6 +149,8 @@ body {
 }
 
 .screen[hidden] { display: none; }
+/* Laid out but never painted: warmUpRewards() adds and removes this in one task */
+.screen.is-warming { display: flex; visibility: hidden; }
 
 @keyframes screen-in {
   from { opacity: 0; transform: translateY(10px); }
@@ -219,7 +243,7 @@ body {
 }
 
 /* Two-pinch confirm: replaces the pager line while armed. The gold bar
-   drains over the confirm window (--confirm-ms is set from app.js). */
+   drains over the confirm window (animated by startDrain in js/ui/effects.js). */
 .confirm-bar {
   display: none;
   flex-direction: column;
@@ -251,13 +275,9 @@ body {
   background: var(--gold);
   box-shadow: 0 0 10px var(--gold);
   transform-origin: left;
-  animation: confirm-drain var(--confirm-ms, 3000ms) linear forwards;
 }
 
-@keyframes confirm-drain {
-  from { transform: scaleX(1); }
-  to   { transform: scaleX(0); }
-}
+
 
 /* The quest title glows gold while armed */
 .hud.is-armed .quest-title:not(.is-done) { color: var(--gold); text-shadow: 0 0 20px rgba(255, 209, 102, 0.5); }
@@ -504,7 +524,9 @@ body {
   width: 64px;
   height: 340px;
   background: linear-gradient(to top, var(--rarity), transparent 90%);
-  filter: blur(5px);
+  /* Soft edges from a mask instead of filter: blur() — much cheaper to paint */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 35%, #000 65%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 35%, #000 65%, transparent);
   opacity: 0;
   transform-origin: bottom center;
   transform: rotate(var(--a)) scaleY(0);
@@ -706,14 +728,8 @@ body {
 [data-rarity="epic"]     .loot-rarity, [data-rarity="epic"]     .loot-card { --rarity: var(--rarity-epic); }
 
 /* -- EPIC: everything goes rainbow (after the lid opens) -- */
-.chest[data-rarity="epic"][data-phase="open"] .chest-rays,
-.chest[data-rarity="epic"][data-phase="spin"] .chest-rays,
-.chest[data-rarity="epic"][data-phase="landed"] .chest-rays,
-.chest[data-rarity="epic"][data-phase="result"] .chest-rays,
-.chest[data-rarity="epic"] .loot-icon-wrap::before {
-  animation: rays-spin 3s linear infinite, rainbow 1.2s linear infinite;
-}
-.chest[data-rarity="epic"] .chest-beam { animation: rainbow 1.2s linear infinite; }
+/* (hue-rotate filter animations were removed: they did nothing on the
+   glasses and cost a lot of paint. The rainbow JACKPOT!! text stays.) */
 .chest[data-rarity="epic"] .chest-shout {
   background: linear-gradient(90deg, #ff5555, #ffd166, #50fa7b, #8be9fd, #bd93f9, #ff79c6, #ff5555);
   background-size: 200% 100%;
@@ -726,7 +742,6 @@ body {
 .chest[data-rarity="epic"][data-phase="landed"] .chest-shout {
   animation: shout-pop 500ms cubic-bezier(.2, 1.8, .4, 1) forwards, rainbow-slide 800ms linear infinite;
 }
-@keyframes rainbow { to { filter: hue-rotate(360deg); } }
 @keyframes rainbow-slide { to { background-position: 200% 0; } }
 
 /* -- Shared bling pieces (spawned by app.js into the particle layer) -- */
@@ -734,17 +749,17 @@ body {
 /* Gold coins: fly up, then fall with gravity */
 .coin {
   position: absolute;
-  font-size: var(--size, 20px);
+  font-size: 24px;            /* fixed: one glyph size to shape, --s scales it */
   color: var(--gold);
   text-shadow: 0 0 8px var(--gold);
   pointer-events: none;
   animation: coin-arc 1100ms both;
 }
 @keyframes coin-arc {
-  0%   { transform: translate(0, 0) rotate(0) scale(0.5); opacity: 0; animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  0%   { transform: translate(0, 0) rotate(0) scale(calc(var(--s, 1) * 0.5)); opacity: 0; animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
   8%   { opacity: 1; }
-  45%  { transform: translate(calc(var(--dx) * 0.5), var(--peak)) rotate(200deg) scale(1); animation-timing-function: cubic-bezier(.6, 0, .9, .5); }
-  100% { transform: translate(var(--dx), 260px) rotate(420deg) scale(0.8); opacity: 0; }
+  45%  { transform: translate(calc(var(--dx) * 0.5), var(--peak)) rotate(200deg) scale(var(--s, 1)); animation-timing-function: cubic-bezier(.6, 0, .9, .5); }
+  100% { transform: translate(var(--dx), 260px) rotate(420deg) scale(calc(var(--s, 1) * 0.8)); opacity: 0; }
 }
 
 /* Twinkling stars */
@@ -775,16 +790,7 @@ body {
   animation: shockwave 700ms ease-out forwards;
 }
 
-/* Screen shake (the whole HUD) */
-.hud.is-shaking { animation: hud-shake 320ms linear; }
-@keyframes hud-shake {
-  0%, 100% { translate: 0 0; }
-  15% { translate: calc(var(--shake) * -1) calc(var(--shake) * 0.5); }
-  30% { translate: var(--shake) calc(var(--shake) * -0.5); }
-  45% { translate: calc(var(--shake) * -0.7) 0; }
-  60% { translate: calc(var(--shake) * 0.6) calc(var(--shake) * 0.4); }
-  80% { translate: calc(var(--shake) * -0.3) 0; }
-}
+/* Screen shake (the whole HUD): a Web Animation, see shakeHud() */
 
 /* Power-up chips next to the level ("☕ 12m  🛡️ ×1") */
 .buff-bar {
@@ -889,6 +895,8 @@ body {
 /* The text box. Transparent background: black is see-through on the
    glasses, so only the dashed outline and the text are visible. */
 .add-input {
+  -webkit-user-select: text;             /* the one place text is selectable */
+  user-select: text;
   width: 460px;
   padding: 18px 20px;
   background: transparent;
@@ -1172,6 +1180,7 @@ body {
 
 /* Particle burst: each particle gets --dx/--dy set from JS */
 .particles {
+  contain: size layout style;
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -1289,7 +1298,6 @@ body {
   background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0 1px, transparent 1px 3px);
   animation: crt-flicker 5s steps(1) infinite;
 }
-:root[data-theme="crt"] .hud.is-shaking { animation: hud-shake 320ms linear; }   /* shake still wins */
 @keyframes crt-flicker { 0%, 96%, 100% { opacity: 1; } 97% { opacity: 0.5; } 98% { opacity: 0.9; } }
 @keyframes crt-jitter  { 0%, 93%, 100% { translate: 0 0; } 94% { translate: 2px 0; } 95% { translate: -2px 1px; } 96% { translate: 1px 0; } }
 
@@ -1379,6 +1387,180 @@ body {
 .chest-note { font-size: 20px; font-weight: 800; color: var(--gold); }
 .chest-note:empty { display: none; }
 
+/* =========================================================
+   QUEST MENU, DAILY CHEST, PROFILE
+   ========================================================= */
+
+/* ---------- Quest menu chips (inside the quest card's confirm bar) ---------- */
+.quest-menu { display: flex; gap: 8px; }
+.quest-menu span {
+  padding: 4px 12px;
+  border: 2px solid var(--faint);
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.quest-menu span.is-selected {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--bg);
+  box-shadow: 0 0 12px var(--gold);
+  animation: pop-in 200ms cubic-bezier(.2, 1.6, .4, 1);
+}
+/* Remove is destructive: red (red = warning) */
+.quest-menu span[data-id="remove"].is-selected {
+  border-color: var(--red);
+  background: var(--red);
+  color: var(--text);
+  box-shadow: 0 0 12px var(--red);
+}
+/* Make room for the menu on busy quest cards */
+.hud.has-quest-menu #screenQuest .reward-label { display: none; }
+
+/* ---------- Daily chest ---------- */
+/* Gift alert ("🎁 DAILY CHEST") in gold */
+[data-kind="gift"] .alert-label, [data-kind="gift"] .alert-title { --alert: var(--gold); }
+[data-kind="gift"] .alert-detail { color: var(--gold); }
+
+/* Banner at the top of the chest screen while it opens */
+.chest-title {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  text-shadow: 0 0 14px var(--gold);
+  z-index: 2;
+  animation: pop-in 400ms cubic-bezier(.2, 1.6, .4, 1) both;
+}
+.chest-title:empty,
+.chest[data-phase="spin"] .chest-title,
+.chest[data-phase="landed"] .chest-title,
+.chest[data-phase="result"] .chest-title { display: none; }
+
+/* ---------- Screen 9: profile ---------- */
+.profile { gap: 10px; }
+.quest-type[data-type="profile"] { color: var(--cyan); }
+
+.profile-stats[hidden],
+.profile-collection[hidden] { display: none; }
+
+.profile-name {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+/* Two columns of "label  value" rows */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 28px;
+  width: 480px;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--faint);
+  padding-bottom: 3px;
+}
+.stat-label { font-size: 15px; color: var(--dim); }
+.stat-value { font-size: 19px; font-weight: 800; color: var(--text); }
+
+/* Collection: 10 × 4 grid of every chest item */
+.profile-collection { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 40px);
+  gap: 5px;
+}
+.collection-cell {
+  --rarity: var(--rarity-common);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--faint);
+  border-radius: 6px;
+  font-size: 22px;
+  opacity: 0.35;                         /* not found yet: dim ❓ */
+}
+.collection-cell[data-rarity="uncommon"] { --rarity: var(--rarity-uncommon); }
+.collection-cell[data-rarity="rare"]     { --rarity: var(--rarity-rare); }
+.collection-cell[data-rarity="epic"]     { --rarity: var(--rarity-epic); }
+.collection-cell.is-found { opacity: 1; border-color: var(--rarity); }
+.collection-cell.is-selected {
+  opacity: 1;
+  border-color: var(--gold);
+  box-shadow: 0 0 12px var(--gold);
+  transform: scale(1.18);
+}
+
+.collection-detail { --rarity: var(--rarity-common); text-align: center; min-height: 58px; }
+.collection-detail[data-rarity="uncommon"] { --rarity: var(--rarity-uncommon); }
+.collection-detail[data-rarity="rare"]     { --rarity: var(--rarity-rare); }
+.collection-detail[data-rarity="epic"]     { --rarity: var(--rarity-epic); }
+.collection-name   { font-size: 24px; font-weight: 800; color: var(--rarity); }
+.collection-effect { font-size: 17px; color: var(--dim); max-width: 480px; }
+
+
+/* =========================================================
+   ACHIEVEMENTS
+   ========================================================= */
+
+/* Pop-up: gold, a little bigger than a normal alert */
+[data-kind="achievement"] .alert-label, [data-kind="achievement"] .alert-title { --alert: var(--gold); }
+[data-kind="achievement"] .alert-title { font-size: 34px; animation: pop-in 520ms 80ms cubic-bezier(.2, 1.8, .4, 1) both; }
+[data-kind="achievement"] .alert-detail { color: var(--gold); }
+
+/* Trophy grid on the Profile (reuses the collection grid styles) */
+.trophy-cell:not(.is-found) { filter: grayscale(1); }
+.achievement-detail { --rarity: var(--gold); min-height: 84px; }
+.ach-progress { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 6px; }
+.ach-progress[hidden] { display: none; }
+.ach-bar { width: 220px; height: 8px; border-radius: 4px; background: var(--faint); overflow: hidden; }
+.ach-bar-fill { height: 100%; width: 0; background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+.ach-progress-text { font-size: 15px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+
+/* Shop: achievement-only items */
+.shop-price[data-state="locked"] { border-color: var(--purple); color: var(--purple); }
+
+/* ---------- Achievement-only themes ---------- */
+:root[data-theme="midnight"] {
+  --text: #e6e9ff; --dim: #7b7fa8; --faint: #1f2240;
+  --green: #8c9eff; --gold: #c3b5ff; --cyan: #7fd1ff; --purple: #d59bff;
+}
+:root[data-theme="legend"] {
+  --text: #fff8e7; --dim: #b39b6b; --faint: #3a2c45;
+  --green: #ffcc33; --gold: #ffe27a; --cyan: #d6a4ff; --purple: #b56cff;
+}
+/* Rainbow Road: vivid colours, and the whole HUD slowly cycles hue */
+:root[data-theme="rainbow"] {
+  --text: #ffffff; --dim: #a0a0c0; --faint: #2a2a40;
+  --green: #50fa7b; --gold: #ffd166; --cyan: #8be9fd; --purple: #ff79c6;
+}
+/* (The accent colours are cycled by setRainbow() in js/features/shop.js.) */
+
+/* ---------- Achievement-only chest skins ---------- */
+.chest-svg[data-skin="void"] {
+  --c-outline: #2a1a44; --c-wood: #1a1030; --c-dark: #0f0a20;
+  --c-light: #3a2a5a; --c-trim: #bd93f9; --c-lock: #ff79c6;
+}
+.chest-svg[data-skin="prism"] {
+  --c-outline: #3a2a5a; --c-wood: #bd93f9; --c-dark: #8be9fd;
+  --c-light: #ff79c6; --c-trim: #50fa7b; --c-lock: #ffd166;
+}
+
 /* Respect reduced-motion settings */
 @media (prefers-reduced-motion: reduce) {
   .levelup-rays { animation: none !important; }
@@ -1392,7 +1574,5 @@ body {
     animation-duration: 1ms !important;
     transition-duration: 1ms !important;
   }
-  /* The confirm countdown is information, not decoration: keep its timing. */
-  .confirm-fill { animation-duration: var(--confirm-ms, 3000ms) !important; }
   .quest-timer[data-state="paused"] .quest-timer-time { animation: none !important; }
 }

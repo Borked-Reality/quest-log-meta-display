@@ -33,6 +33,32 @@ function applyCosmetics(preview = {}) {
   el.chestSvg.dataset.skin = look.chest;
   ui.coinGlyph = look.coin;
   Sound.setPack(look.sound);
+  setRainbow(look.theme === "rainbow");
+}
+
+// Rainbow Road: cycles the accent colours (the same CSS variables every
+// theme sets) round the colour wheel. Done in JS because a CSS filter
+// (hue-rotate) didn't change anything on the glasses.
+const RAINBOW_CYCLE_MS = 8000;          // one trip round the colour wheel
+const RAINBOW_VARS = [["--green", 0], ["--gold", 60], ["--cyan", 180], ["--purple", 270]];
+
+function setRainbow(on) {
+  const root = document.documentElement;
+  clearInterval(ui.rainbowTimer);
+  ui.rainbowTimer = null;
+  if (!on) {
+    RAINBOW_VARS.forEach(([name]) => root.style.removeProperty(name));
+    return;
+  }
+  const paint = () => {
+    if (document.hidden || ui.idle) return;          // display off / HUD hidden: skip
+    const hue = ((Date.now() % RAINBOW_CYCLE_MS) / RAINBOW_CYCLE_MS) * 360;
+    RAINBOW_VARS.forEach(([name, offset]) => {
+      root.style.setProperty(name, `hsl(${Math.round(hue + offset) % 360}, 95%, 64%)`);
+    });
+  };
+  paint();
+  ui.rainbowTimer = setInterval(paint, 250);         // 4×/s: each repaint restyles the whole HUD
 }
 
 function showShopScreen() {
@@ -70,6 +96,13 @@ function shopAction() {
   const item = currentShopItem();
   if (isOwned(item)) {
     if (!isEquipped(item)) equipItem(item);
+    return;
+  }
+  // Achievement-only: can't be bought.
+  if (item.price == null) {
+    const a = ACHIEVEMENTS.find((x) => x.id === item.achievement);
+    Sound.play("disarm");
+    showToast(a && !a.secret ? `Earn it: ${a.desc}` : "Earn it: it's a secret 🤫");
     return;
   }
   if (player.gold < item.price) {

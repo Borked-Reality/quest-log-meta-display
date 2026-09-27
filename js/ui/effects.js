@@ -6,20 +6,25 @@
 
 /* ---------- EFFECTS ---------- */
 
+// The gold "time left" bar under the quest menu and confirmations. Uses
+// the Web Animations API so restarting it never forces a layout.
+function startDrain(ms) {
+  el.hud.querySelectorAll(".confirm-fill").forEach((fill) => {
+    fill.getAnimations().forEach((a) => a.cancel());
+    fill.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(0)" }], { duration: ms, fill: "forwards" });
+  });
+}
+
 // Quick green flash over the whole HUD.
 function flashScreen(color = "green") {
   el.flash.dataset.color = color;
-  el.flash.classList.remove("is-active");
-  void el.flash.offsetWidth;          // restart the CSS animation
-  el.flash.classList.add("is-active");
+  restartClass(el.flash, "is-active");
 }
 
 // Small floating text, e.g. "+5 XP" after logging a glass of water.
 function showToast(text) {
   el.toast.textContent = text;
-  el.toast.classList.remove("is-active");
-  void el.toast.offsetWidth;
-  el.toast.classList.add("is-active");
+  restartClass(el.toast, "is-active");
 }
 
 // Burst of small squares flying out from the center.
@@ -49,8 +54,14 @@ const REDUCED_MOTION = window.matchMedia && window.matchMedia("(prefers-reduced-
 // Shakes the whole HUD. strength: 1 = small bump, 3 = big hit.
 function shakeHud(strength = 1) {
   if (REDUCED_MOTION) return;
-  el.hud.style.setProperty("--shake", `${3 + strength * 3}px`);
-  restartClass(el.hud, "is-shaking");
+  // A Web Animation, not a class: changing a class or variable on .hud
+  // makes the glasses restyle all ~300 elements inside it.
+  const d = 3 + strength * 3;
+  const at = (offset, x, y) => ({ offset, translate: `${x * d}px ${y * d}px` });
+  el.hud.animate(
+    [at(0, 0, 0), at(0.15, -1, 0.5), at(0.3, 1, -0.5), at(0.45, -0.7, 0), at(0.6, 0.6, 0.4), at(0.8, -0.3, 0), at(1, 0, 0)],
+    { duration: 320, easing: "linear" },
+  );
 }
 
 // Gold coins (◆) that fly up from (x%, y%) and fall with gravity.
@@ -66,7 +77,7 @@ function spawnCoins(count, x = 50, y = 75) {
     coin.style.top = `${y}%`;
     coin.style.setProperty("--dx", `${(Math.random() - 0.5) * 380}px`);
     coin.style.setProperty("--peak", `${-120 - Math.random() * 170}px`);
-    coin.style.setProperty("--size", `${16 + Math.random() * 14}px`);
+    coin.style.setProperty("--s", (16 + Math.random() * 14) / 24);
     coin.style.animationDelay = `${Math.random() * 120}ms`;
     el.particles.appendChild(coin);
     setTimeout(() => coin.remove(), 1400);
@@ -146,7 +157,53 @@ function settleXpBar() {
   const fill = el.xpFill;
   fill.classList.add("no-transition");
   fill.style.width = "0%";
-  void fill.offsetWidth;              // apply the snap before re-enabling transition
-  fill.classList.remove("no-transition");
-  renderXp();                         // new level number + title + progress
+  // Let a frame show the empty bar, then fill it (no forced layout).
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fill.classList.remove("no-transition");
+    renderXp();                       // new level number + title + progress
+  }));
+}
+
+// ----- Reward warm-up -----
+// The first chest / level-up of a session is slow to lay out on the glasses
+// (fonts, emoji and ~30 reel rows seen for the first time: well over a
+// second, measured). So while the app sits idle after start-up, lay those
+// screens out once, hidden. One small step per task, so a swipe in the
+// middle never waits long. The real rewards then reuse the work.
+function warmUpRewards() {
+  // Idle callbacks can be starved; the timeout makes sure each step still runs.
+  const idle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 500 }) : setTimeout(fn, 100));
+  const layOut = (screen) => {
+    screen.classList.add("is-warming");
+    void screen.offsetHeight;               // lay it out now, while nothing else is happening
+    screen.classList.remove("is-warming");
+  };
+  const steps = [];
+  // The chest on its own, then a reel row for every loot item (8 per step).
+  steps.push(() => { el.reelStrip.replaceChildren(); layOut(el.screens.loot); });
+  for (let i = 0; i < LOOT_TABLE.length; i += 8) {
+    const rows = LOOT_TABLE.slice(i, i + 8);
+    steps.push(() => { el.reelStrip.replaceChildren(...rows.map(reelRow)); layOut(el.screens.loot); });
+  }
+  steps.push(() => el.reelStrip.replaceChildren());
+  // Level up (every digit the big number can show), with a coin in flight.
+  steps.push(() => {
+    el.levelUpNumber.textContent = "0123456789";
+    const coin = document.createElement("span");
+    coin.className = "coin";
+    coin.textContent = ui.coinGlyph || "◆";
+    coin.style.visibility = "hidden";
+    el.particles.appendChild(coin);
+    layOut(el.screens.levelUp);
+    coin.remove();
+    el.levelUpNumber.textContent = "";
+  });
+  steps.push(() => layOut(el.screens.complete));
+
+  const next = () => {
+    if (["complete", "levelUp", "loot"].includes(ui.screen)) return;  // real rewards took over: stop
+    steps.shift()();
+    if (steps.length) idle(next);
+  };
+  idle(next);
 }

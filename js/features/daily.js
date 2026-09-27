@@ -35,6 +35,7 @@ function checkForNewDay() {
   saveProgress();
 
   if (!isFirstRun) {
+    offerDailyChest();
     // Timed quests open during the day get their own announcement later.
     announceOpenedQuests(true);
     notify({

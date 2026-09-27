@@ -21,7 +21,14 @@ const CONFIG = {
   // Accident protection (see js/core/quests.js).
   CONFIRM_WINDOW_MS: 3000,    // 2nd pinch must come within this (0 = one pinch completes)
   CONFIRM_MIN_GAP_MS: 250,    // a 2nd pinch faster than this is ignored (misfire)
-  UNDO_WINDOW_MS: 5000,       // middle pinch undoes a +1 step for this long
+  UNDO_WINDOW_MS: 5000,       // middle pinch undoes a +1 step / a removal for this long
+  QUEST_MENU_MS: 4000,        // the hold menu (Edit / Remove) stays open this long
+
+  // Pinch gestures (see the pinch detector in js/ui/input.js).
+  DOUBLE_PINCH_MS: 1000,      // 2nd pinch within this = a double pinch (set in Settings)
+  DOUBLE_PINCH_MIN_MS: 60,    // faster than this = one pinch reported twice (ignored)
+  HOLD_MS: 450,               // pinch held this long = a hold (opens the Edit / Remove menu)
+  PINCH_DEDUPE_MS: 250,       // the glasses may report one pinch as both a key and a pointer
 
   // Reminders only fire during waking hours (24h clock).
   DAY_START_HOUR: 8,

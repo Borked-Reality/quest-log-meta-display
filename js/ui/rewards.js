@@ -94,11 +94,12 @@ function showLevelUpScreen({ from, to, bonusGold, newTitle }) {
   ui.advanceTimer = setTimeout(advanceFromRewards, CONFIG.LEVEL_UP_SCREEN_MS);
 }
 
-// Removes and re-adds a class so its CSS animation plays again.
+// Plays a class-triggered CSS animation again: takes the class off, lets
+// one frame render without it, then puts it back. This never forces a
+// layout ("offsetWidth" tricks do — expensive on the glasses' slow CPU).
 function restartClass(node, className) {
   node.classList.remove(className);
-  void node.getBoundingClientRect();    // forces a reflow (works for SVG too)
-  node.classList.add(className);
+  requestAnimationFrame(() => requestAnimationFrame(() => node.classList.add(className)));
 }
 
 // TREASURE CHEST (Vampire Survivors style, deliberately over the top).
@@ -126,16 +127,18 @@ function rarityColor(rarity) {
   return { common: "var(--text)", uncommon: "var(--green)", rare: "var(--gold)", epic: "var(--purple)" }[rarity];
 }
 
-function showChestScreen({ item, gold, isNew, note }) {
+// title: optional banner during the opening (e.g. "🎁 DAILY CHEST · DAY 3").
+function showChestScreen({ item, gold, isNew, note, title }) {
   const tier = RARITY_ORDER.indexOf(item.rarity);
   const spinMs = 2200 + tier * 450;
   const winnerIndex = 22 + tier * 4;
-  ui.chest = { item, gold, isNew, tier, phase: "drop", raf: null, coinTimer: null, winnerIndex };
+  ui.chest = { item, gold, isNew, tier, phase: "drop", anim: null, coinTimer: null, winnerIndex };
 
   const screen = el.screens.loot;
   screen.dataset.rarity = item.rarity;
   screen.classList.toggle("is-new", !!isNew);
   el.chestShout.textContent = CHEST_SHOUTS[item.rarity];
+  el.chestTitle.textContent = title || "";
   setLetters(el.lootRarity, `${RARITIES[item.rarity].label.toUpperCase()}!`);
   el.lootIcon.textContent = item.icon;
   el.lootName.textContent = item.name;
@@ -201,21 +204,26 @@ function buildReel(prize, winnerIndex) {
     if (i === winnerIndex) item = prize;
     else if (i === teaseAt && epics.length) item = epics[Math.floor(Math.random() * epics.length)];
 
-    const row = document.createElement("div");
-    row.className = "reel-row";
-    row.dataset.rarity = item.rarity;
-    const icon = document.createElement("span");
-    icon.className = "reel-icon";
-    icon.textContent = item.icon;
-    const name = document.createElement("span");
-    name.className = "reel-name";
-    name.textContent = item.name;
-    row.append(icon, name);
-    strip.appendChild(row);
+    strip.appendChild(reelRow(item));
   }
   // Start with row 1 in the middle of the 3-row window.
   strip.style.transition = "none";
   strip.style.transform = "translateY(0px)";
+}
+
+// One row of the reel: icon + name, coloured by rarity.
+function reelRow(item) {
+  const row = document.createElement("div");
+  row.className = "reel-row";
+  row.dataset.rarity = item.rarity;
+  const icon = document.createElement("span");
+  icon.className = "reel-icon";
+  icon.textContent = item.icon;
+  const name = document.createElement("span");
+  name.className = "reel-name";
+  name.textContent = item.name;
+  row.append(icon, name);
+  return row;
 }
 
 // The chase-light bulbs around the reel frame (made once, at start-up).
@@ -238,29 +246,23 @@ function reelTargetY() {
   return -(ui.chest.winnerIndex - 1) * REEL_ROW_PX;
 }
 
-// Spin: one long CSS transition that starts fast and eases out slowly.
-// A frame loop watches the position and ticks once per item passing,
-// while a coin fountain keeps going behind it.
+// The spin's easing: starts fast, eases out slowly.
+const REEL_EASING = [0.1, 0.7, 0.15, 1];
+
+// Spin: one Web Animation (runs off the main thread, no layout work).
+// The tick for each item passing is scheduled up front from the easing
+// curve, so nothing is measured while the reel spins.
 function startReel(spinMs) {
   const strip = el.reelStrip;
   setChestPhase("spin");
-  void strip.offsetWidth;                 // make sure the start position applies
-  strip.style.transition = `transform ${spinMs}ms cubic-bezier(0.1, 0.7, 0.15, 1)`;
-  strip.style.transform = `translateY(${reelTargetY()}px)`;
+  ui.chest.anim = strip.animate(
+    [{ transform: "translateY(0px)" }, { transform: `translateY(${reelTargetY()}px)` }],
+    { duration: spinMs, easing: `cubic-bezier(${REEL_EASING.join(", ")})`, fill: "forwards" },
+  );
   Sound.play("slotMusic", { duration: spinMs });
-
-  let lastRow = -1;
-  const watch = () => {
-    const transform = getComputedStyle(strip).transform;
-    const y = transform === "none" ? 0 : new DOMMatrixReadOnly(transform).m42;
-    const row = Math.round(-y / REEL_ROW_PX);
-    if (row !== lastRow) {
-      lastRow = row;
-      Sound.play("reelTick", { i: row });
-    }
-    ui.chest.raf = requestAnimationFrame(watch);
-  };
-  ui.chest.raf = requestAnimationFrame(watch);
+  reelTickTimes(spinMs, ui.chest.winnerIndex - 1).forEach((ms, i) => {
+    ui.effectTimers.push(setTimeout(() => Sound.play("reelTick", { i }), ms));
+  });
 
   // Coin fountain from both bottom corners of the reel.
   let side = 0;
@@ -271,13 +273,28 @@ function startReel(spinMs) {
   }, 170);
 }
 
+// When (ms into the spin) each of `rows` items passes the middle, for the
+// REEL_EASING cubic-bezier curve.
+function reelTickTimes(spinMs, rows) {
+  const [x1, y1, x2, y2] = REEL_EASING;
+  const bezier = (a, b, s) => 3 * a * s * (1 - s) ** 2 + 3 * b * s * s * (1 - s) + s ** 3;
+  const times = [];
+  let next = 1;
+  for (let s = 0; s <= 1 && next <= rows; s += 0.002) {
+    while (next <= rows && bezier(y1, y2, s) >= next / rows) {
+      times.push(bezier(x1, x2, s) * spinMs);
+      next++;
+    }
+  }
+  return times;
+}
+
 // The reel stops on the prize. Bigger rarity = bigger everything.
 function landReel() {
   const { item, tier } = ui.chest;
   const color = rarityColor(item.rarity);
-  cancelAnimationFrame(ui.chest.raf);
+  if (ui.chest.anim) ui.chest.anim.cancel();
   clearInterval(ui.chest.coinTimer);
-  el.reelStrip.style.transition = "none";
   el.reelStrip.style.transform = `translateY(${reelTargetY()}px)`;
   Sound.stopMusic();
   setChestPhase("landed");

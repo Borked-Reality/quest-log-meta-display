@@ -13,9 +13,6 @@ el.shopChest.removeAttribute("id");
 el.shopChest.classList.add("mini");
 el.shopChestSlot.appendChild(el.shopChest);
 
-// The confirm bar's drain animation uses the same timing as the logic.
-el.hud.style.setProperty("--confirm-ms", `${CONFIG.CONFIRM_WINDOW_MS}ms`);
-
 loadSettings();
 applySettings();
 loadProgress();
@@ -43,3 +40,5 @@ void el.xpFill.offsetWidth;
 el.xpFill.classList.remove("no-transition");
 
 resetIdleTimer();
+offerDailyChest();          // first open today? a free chest is waiting
+setTimeout(warmUpRewards, 3000);   // once the app has settled: so the first chest is smooth

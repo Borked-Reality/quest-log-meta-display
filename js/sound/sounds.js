@@ -221,14 +221,15 @@ const SOUNDS = {
     const melody = [0, 4, 7, 12, 16, 12, 7, 4, 2, 5, 9, 14, 17, 14, 9, 5];
     const bass = [-24, -24, -19, -22];
     const count = Math.floor(duration / 1000 / step);
+    const lead = [];
+    const low = [];
     for (let i = 0; i < count; i++) {
-      v({ freq: note(melody[i % melody.length]), at: i * step, dur: step * 0.9,
-          type: "square", cutoff: 2600, vol: 0.035, wet: false, out: bus });
-      if (i % 4 === 0) {
-        v({ freq: note(bass[Math.floor(i / 4) % bass.length]), at: i * step, dur: step * 3,
-            type: "triangle", vol: 0.09, wet: false, out: bus });
-      }
+      lead.push({ freq: note(melody[i % melody.length]), at: i * step, dur: step * 0.9 });
+      if (i % 4 === 0) low.push({ freq: note(bass[Math.floor(i / 4) % bass.length]), at: i * step, dur: step * 3 });
     }
+    // One oscillator per line (not per note): far less work on the glasses.
+    Sound.sequence(lead, { type: "square", cutoff: 2600, vol: 0.035, out: bus });
+    Sound.sequence(low, { type: "triangle", vol: 0.09, out: bus });
   },
 
   // One item passing the reel window; slightly higher as it goes.
@@ -240,6 +241,15 @@ const SOUNDS = {
   reelLand() {
     noise({ dur: 0.06, vol: 0.07, from: 2500, to: 900, attack: 0.003 });
     v({ freq: note(24), dur: 0.6, type: "triangle", vol: 0.08 });
+  },
+
+  // Achievement unlocked: a short triumphant jingle + bells.
+  achievement() {
+    [0, 4, 7].forEach((s, i) => brass(note(s), i * 0.1, 0.18, 0.045, 2800));
+    [12, 16, 19].forEach((s) => brass(note(s), 0.3, 0.9, 0.04, 3200));
+    v({ freq: note(-24), at: 0.3, dur: 0.8, vol: 0.15, wet: false });
+    crash(0.3, 1.2, 0.035);
+    [24, 28, 31, 36, 40].forEach((s, i) => v({ freq: note(s), at: 0.4 + i * 0.06, dur: 0.3, type: "triangle", vol: 0.04 }));
   },
 
   // A quest you added lands on the board: "quest accepted".
@@ -268,7 +278,7 @@ const SOUND_PREVIEWS = [
   ["coin", {}], ["levelUp", {}], ["loot", { rarity: "common" }], ["loot", { rarity: "rare" }],
   ["loot", { rarity: "epic" }], ["questAdded", {}], ["arm", {}], ["disarm", {}], ["timerStart", {}], ["timerDone", {}],
   ["chestDrop", {}], ["chestRattle", {}], ["chestOpen", { tier: 3 }], ["slotMusic", { duration: 2500 }], ["reelLand", {}],
-  ["coinClink", {}], ["payout", { tier: 3 }], ["firework", {}], ["newItem", {}], ["purchase", {}], ["notify", {}], ["reminder", {}], ["hide", {}], ["show", {}],
+  ["coinClink", {}], ["payout", { tier: 3 }], ["firework", {}], ["newItem", {}], ["purchase", {}], ["achievement", {}], ["notify", {}], ["reminder", {}], ["hide", {}], ["show", {}],
 ];
 let soundPreviewIndex = 0;
 

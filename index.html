@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quest Log // HUD</title>
+  <link rel="icon" href="data:,">  <!-- no favicon request (saves a 404 round trip on the glasses) -->
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -53,9 +54,10 @@
           <span class="reward-gold">+<span id="questGold">5</span> ◆</span>
         </div>
         <div id="questPager" class="pager">1 / 6</div>
-        <!-- Shown after the 1st pinch: the 2nd pinch must come before it drains -->
+        <!-- Quest menu, shown after the 1st pinch: ◀ ▶ picks, 2nd pinch does it
+             (chips filled in by renderQuestMenu). The bar drains until it closes. -->
         <div class="confirm-bar">
-          <div class="confirm-text">Pinch again to complete</div>
+          <div id="questMenu" class="quest-menu"></div>
           <div class="confirm-timer"><div class="confirm-fill"></div></div>
         </div>
       </div>
@@ -91,6 +93,8 @@
         <!-- The chest (pixel art) + the light beam behind it -->
         <!-- Light rays turning behind everything (rarity colour, rainbow for epic) -->
         <div class="chest-rays" aria-hidden="true"></div>
+        <!-- Banner during the opening, e.g. "🎁 DAILY CHEST · DAY 3" -->
+        <div id="chestTitle" class="chest-title"></div>
         <div class="chest-stage">
           <!-- A fan of light beams that bursts out when the lid opens -->
           <div class="chest-beams" aria-hidden="true">
@@ -177,11 +181,11 @@
       <div id="screenAdd" class="screen" hidden>
         <div class="nav-up-hint">▲ Shop</div>
         <div id="addEntry" class="add-entry">
-          <label for="addInput" class="quest-type" data-type="new">+ ADD QUEST</label>
+          <label id="addLabel" for="addInput" class="quest-type" data-type="new">+ ADD QUEST</label>
           <input id="addInput" class="add-input" type="text" maxlength="80"
                  placeholder="Pinch, then say it" autocomplete="off" enterkeyhint="done">
-          <div class="add-examples">
-            “Call mom at 3pm” · “Daily: stretch 10 minutes”<br>“Pay rent tomorrow” · “Take out bins in 2 hours”
+          <div id="addExamples" class="add-examples">
+            “Call mom at 3pm” · “Daily: stretch 10 minutes” · “Pay rent tomorrow”
           </div>
         </div>
         <div id="addPreview" class="add-preview" hidden>
@@ -208,7 +212,7 @@
         ◀ ▶ browse (the item previews live on the HUD), pinch to buy/equip.
       -->
       <div id="screenShop" class="screen shop" hidden>
-        <div class="nav-up-hint">▲ Settings</div>
+        <div class="nav-up-hint">▲ Profile</div>
         <div id="shopKind" class="quest-type" data-type="shop">🛒 THEME</div>
         <div class="shop-preview">
           <div id="shopIcon" class="shop-icon">🌴</div>
@@ -227,7 +231,39 @@
       </div>
 
       <!--
-        SCREEN 7: SETTINGS (swipe up from the Shop). One setting per card:
+        SCREEN 9: PROFILE (swipe up from the Shop). ◀ ▶ steps from the
+        stats card through every item in the collection grid.
+      -->
+      <div id="screenProfile" class="screen profile" hidden>
+        <div class="nav-up-hint">▲ Settings</div>
+        <div id="profileKind" class="quest-type" data-type="profile">👤 PROFILE</div>
+        <div id="profileStats" class="profile-stats">
+          <div id="profileName" class="profile-name">Novice · LV 1</div>
+          <div id="profileStatsGrid" class="stats-grid"></div>
+        </div>
+        <div id="profileAchievements" class="profile-collection" hidden>
+          <div id="achievementGrid" class="collection-grid"></div>
+          <div class="collection-detail achievement-detail">
+            <div id="achName" class="collection-name">???</div>
+            <div id="achDesc" class="collection-effect">Keep playing…</div>
+            <div id="achProgress" class="ach-progress">
+              <div class="ach-bar"><div id="achBarFill" class="ach-bar-fill"></div></div>
+              <span id="achProgressText" class="ach-progress-text">0 / 100</span>
+            </div>
+          </div>
+        </div>
+        <div id="profileCollection" class="profile-collection" hidden>
+          <div id="collectionGrid" class="collection-grid"></div>
+          <div id="collectionDetail" class="collection-detail">
+            <div id="collectionName" class="collection-name">???</div>
+            <div id="collectionEffect" class="collection-effect">Not found yet</div>
+          </div>
+        </div>
+        <div id="profilePager" class="pager">Stats</div>
+      </div>
+
+      <!--
+        SCREEN 7: SETTINGS (swipe up from Profile). One setting per card:
         ◀ ▶ picks a setting, pinch changes it, ▼ goes back.
       -->
       <div id="screenSettings" class="screen" hidden>
@@ -274,7 +310,7 @@
         <span id="hintHideLabel" class="hint-label">Hide</span>
       </span>
       <span id="hintConfirm" class="hint hint-primary">
-        <span class="hint-key">PINCH</span>
+        <span id="hintConfirmKey" class="hint-key">PINCH</span>
         <span id="hintConfirmLabel" class="hint-label">Complete</span>
       </span>
     </footer>
@@ -308,12 +344,13 @@
       <button id="soundPreview" class="dev-btn" data-action="previewSound">♪ TEST</button>
       <button class="dev-btn" data-action="simulateQuest">+ QUEST</button>
       <button id="clockButton" class="dev-btn" data-action="timeWarp">+1 HR</button>
+      <button class="dev-btn" data-action="hold">HOLD</button>
       <button class="dev-btn" data-action="hide">HIDE ▼</button>
       <button class="dev-btn" data-action="show">SHOW ▲</button>
       <button class="dev-btn" data-action="reset">RESET</button>
     </div>
     <p class="preview-caption">
-      Band: ← → browse · ↑ show / Add / Shop / Settings · ↓ back / hide · Enter pinch · Esc middle pinch<br>
+      Band: ← → browse · ↑ show / Add / Shop / Profile / Settings · ↓ back / hide · Enter pinch (hold Enter = hold) · Esc middle pinch<br>
       Dev: N incoming quest · T skip ahead 1 hour · P preview sounds · M sound
     </p>
   </section>
@@ -327,6 +364,7 @@
   <script src="js/data/quests.js"></script>
   <script src="js/data/loot.js"></script>
   <script src="js/data/shop-items.js"></script>
+  <script src="js/data/achievements.js"></script>
   <script src="js/core/state.js"></script>
   <script src="js/core/progression.js"></script>
   <script src="js/core/loot.js"></script>
@@ -335,6 +373,10 @@
   <script src="js/features/add-quest.js"></script>
   <script src="js/features/settings.js"></script>
   <script src="js/features/shop.js"></script>
+  <script src="js/features/quest-menu.js"></script>
+  <script src="js/features/daily-chest.js"></script>
+  <script src="js/features/profile.js"></script>
+  <script src="js/features/achievements.js"></script>
   <script src="js/features/time.js"></script>
   <script src="js/features/daily.js"></script>
   <script src="js/features/motion.js"></script>

@@ -52,6 +52,18 @@ const SHOP_ITEMS = [
   { id: "coin-duck",  kind: "coin", value: "🦆", price: 200, icon: "🦆", name: "Duck Storm",   desc: "Quack" },
   { id: "coin-frog",  kind: "coin", value: "🐸", price: 200, icon: "🐸", name: "Frog Fountain", desc: "Ribbit ribbit" },
   { id: "coin-money", kind: "coin", value: "💸", price: 500, icon: "💸", name: "Make It Rain", desc: "Cash money" },
+
+  // ----- Achievement-only (price: null) — can't be bought, only earned -----
+  // `achievement` is the id in js/data/achievements.js that unlocks it.
+  { id: "theme-rainbow",  kind: "theme", value: "rainbow",  price: null, achievement: "konami",    icon: "🌈", name: "Rainbow Road",    desc: "Every colour, forever" },
+  { id: "theme-midnight", kind: "theme", value: "midnight", price: null, achievement: "nightowl",  icon: "🌙", name: "Midnight",        desc: "For the night owls" },
+  { id: "theme-legend",   kind: "theme", value: "legend",   price: null, achievement: "collector", icon: "🏆", name: "Legendary",       desc: "Gold and royal purple" },
+  { id: "sound-glitch",   kind: "sound", value: "glitch",   price: null, achievement: "kazoo",     icon: "📟", name: "Glitched",        desc: "Every note slightly wrong" },
+  { id: "chest-void",     kind: "chest", value: "void",     price: null, achievement: "void",      icon: "🕳️", name: "Void Chest",      desc: "It stares back" },
+  { id: "chest-prism",    kind: "chest", value: "prism",    price: null, achievement: "streak30",  icon: "🔮", name: "Prismatic Chest", desc: "Thirty days of glory" },
+  { id: "coin-water",     kind: "coin",  value: "💧",       price: null, achievement: "hydro",     icon: "💧", name: "Hydration",       desc: "Stay hydrated" },
+  { id: "coin-potato",    kind: "coin",  value: "🥔",       price: null, achievement: "potato",    icon: "🥔", name: "Potato Rain",     desc: "Spud luck" },
+  { id: "coin-skull",     kind: "coin",  value: "💀",       price: null, achievement: "unlucky",   icon: "💀", name: "Bad Luck",        desc: "Nothing. Figures." },
 ];
 
 const SHOP_KIND_LABELS = { theme: "THEME", font: "FONT", sound: "SOUND PACK", chest: "CHEST SKIN", coin: "COIN RAIN" };
@@ -64,10 +76,13 @@ const DEFAULT_EQUIPPED = { theme: "dracula", font: "system", sound: "synth", che
 //   cutoff     max lowpass (Hz), softer     reverb     × the normal reverb
 //   vibrato    wobble depth in cents        rate       wobbles per second
 //   vol        × volume (square/saw are louder than sine)
+//   jitter     random pitch wobble per note, in semitones (Glitched)
 const SOUND_PACKS = {
   synth: {},
   chip:  { wave: "square", reverb: 0, vol: 0.85 },
   kazoo: { wave: "sawtooth", cutoff: 1900, vibrato: 35, rate: 6.5, vol: 0.9, reverb: 0.3 },
   bells: { wave: "sine", transpose: 12, reverb: 2.4, vol: 1.1 },
   deep:  { wave: "sawtooth", transpose: -12, cutoff: 1100, vol: 0.85 },
+  // Achievement-only. jitter = random detune per note, in semitones.
+  glitch: { wave: "square", jitter: 1.5, reverb: 0.5, vol: 0.8 },
 };

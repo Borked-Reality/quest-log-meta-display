@@ -95,11 +95,14 @@ const Sound = {
 
     // The equipped sound pack reshapes every note (see SOUND_PACKS).
     const pack = this.pack;
-    const shift = Math.pow(2, (pack.transpose || 0) / 12);
+    const jitter = pack.jitter ? (Math.random() * 2 - 1) * pack.jitter : 0;   // Glitched pack
+    const shift = Math.pow(2, ((pack.transpose || 0) + jitter) / 12);
     freq *= shift;
     if (glide) glide *= shift;
     if (pack.wave) type = pack.wave;
-    if (pack.cutoff) cutoff = Math.min(cutoff || 20000, pack.cutoff);
+    // Pack filters muffle the sound, but never below the note itself
+    // (otherwise high sparkles and coin "tings" would vanish).
+    if (pack.cutoff) cutoff = Math.min(cutoff || 20000, Math.max(pack.cutoff, freq * 2));
     vol *= pack.vol || 1;
 
     const osc = ctx.createOscillator();
@@ -136,6 +139,44 @@ const Sound = {
 
     osc.start(t);
     osc.stop(t + dur + 0.05);
+  },
+
+  // A run of notes on ONE oscillator (instead of one oscillator per note).
+  // Much cheaper for long, fast patterns like the chest's slot music.
+  //   notes: [{ freq, at, dur }]    (at/dur in seconds from now)
+  sequence(notes, { type = "square", vol = 0.05, cutoff, out, attack = 0.004 } = {}) {
+    if (!notes.length) return;
+    const ctx = this.ctx;
+    const pack = this.pack;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = pack.wave || type;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    const peak = vol * (pack.vol || 1);
+    notes.forEach(({ freq, at, dur }) => {
+      const jitter = pack.jitter ? (Math.random() * 2 - 1) * pack.jitter : 0;
+      const f = freq * Math.pow(2, ((pack.transpose || 0) + jitter) / 12);
+      const t = now + at;
+      osc.frequency.setValueAtTime(f, t);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(peak, t + attack);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    });
+    let source = osc;
+    const limit = pack.cutoff ? Math.min(cutoff || 20000, pack.cutoff) : cutoff;
+    if (limit) {
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = limit;
+      osc.connect(filter);
+      source = filter;
+    }
+    source.connect(gain);
+    gain.connect(out || this.master);
+    const last = notes[notes.length - 1];
+    osc.start(now);
+    osc.stop(now + last.at + last.dur + 0.05);
   },
 
   // Filtered noise: a sweep from `from` Hz to `to` Hz (whoosh / impact).

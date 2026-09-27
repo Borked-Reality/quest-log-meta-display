@@ -9,9 +9,10 @@
 // Picks a rarity key using the weights in RARITIES.
 // A "rarity" power-up (Clover, Rabbit's Foot) multiplies the rare and
 // epic weights.
-function rollRarity() {
+// minTier: 0 = any, 1 = at least uncommon … 3 = epic (daily login chest).
+function rollRarity(minTier = 0) {
   const boost = buffMult("rarity");
-  const entries = Object.entries(RARITIES).map(([key, r]) =>
+  const entries = Object.entries(RARITIES).filter((_, tier) => tier >= minTier).map(([key, r]) =>
     [key, key === "rare" || key === "epic" ? r.weight * boost : r.weight]);
   const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
   let roll = Math.random() * total;
@@ -84,6 +85,8 @@ function openChest(item) {
         ? (won ? `You scratched ${won} ◆!` : "Nothing. Figures.")
         : (won ? gamble.win : "");
       noteGold = won;
+      if (item.id === "potato" && won) player.counters.goldenPotato = 1;   // secret achievements
+      if (item.id === "scratch" && !won) player.counters.zeroScratch = 1;
     }
   }
   const gold = CHEST_GOLD[item.rarity];

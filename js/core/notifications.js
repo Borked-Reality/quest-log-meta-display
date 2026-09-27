@@ -25,7 +25,8 @@ function notify(alert) {
   }
   ui.alertQueue.push(alert);
   wake();
-  Sound.play(alert.kind === "reminder" ? "reminder" : "notify");
+  // (Achievements play their fanfare when shown, in showAlertScreen.)
+  if (alert.kind !== "achievement") Sound.play(alert.kind === "reminder" ? "reminder" : "notify");
   // Don't interrupt a reward sequence, another alert, or someone adding a
   // quest / changing settings. It shows when they're back on the board.
   if (!isBusyScreen()) showNextAlert();
@@ -41,7 +42,7 @@ function isAlertStale(alert) {
 
 // Screens that queued alerts wait for.
 function isBusyScreen() {
-  return isOnRewardScreen() || ["alert", "add", "shop", "settings"].includes(ui.screen);
+  return isOnRewardScreen() || ["alert", "add", "shop", "profile", "settings"].includes(ui.screen);
 }
 
 // Shows the next queued alert. Returns false if the queue was empty.
@@ -58,6 +59,18 @@ function showNextAlert() {
 function closeAlert(accept) {
   const alert = ui.currentAlert;
   ui.currentAlert = null;
+  // Achievement with a cosmetic reward: pinch equips it.
+  if (accept && alert && alert.action === "equipReward") {
+    const item = SHOP_ITEMS.find((i) => i.id === alert.rewardItem);
+    if (item) equipItem(item);
+  }
+
+  // Daily login chest: pinch opens it. (Dismissed → offered again next time.)
+  if (accept && alert && alert.action === "dailyChest") {
+    openDailyChest();
+    return;
+  }
+
   const quest = accept && alert && !isAlertStale(alert)
     ? QUESTS.find((q) => q.id === alert.questId)
     : null;
@@ -67,7 +80,7 @@ function closeAlert(accept) {
   // still takes a second pinch to complete.
   if (quest && alert.action === "log" && !quest.completed) {
     if (progressOf(quest) + 1 >= quest.target) {
-      openQuestArmed(quest, () => logQuestStep(quest));
+      openQuestArmed(quest);
       return;
     }
     logQuestStep(quest);
@@ -76,7 +89,7 @@ function closeAlert(accept) {
 
   // Timer finished ("TIME'S UP"): open the quest ready to complete.
   if (quest && alert.action === "finish" && !quest.completed) {
-    openQuestArmed(quest, () => completeQuest(quest));
+    openQuestArmed(quest);
     return;
   }
 
@@ -93,11 +106,12 @@ function closeAlert(accept) {
 
 // Shows a quest already armed, so the next pinch completes it. If the
 // two-pinch setting is off, completes right away.
-function openQuestArmed(quest, complete) {
+function openQuestArmed(quest) {
   player.currentQuestIndex = QUESTS.indexOf(quest);
   showScreen("quest");
   renderAll();
-  if (confirmTwice("complete", quest.id)) complete();
+  if (!CONFIG.CONFIRM_WINDOW_MS) runQuestAction(quest, "primary");
+  else armDouble(quest, CONFIG.CONFIRM_WINDOW_MS);   // one more pinch finishes it
 }
 
 // Adds a quest to the board and saves it. Returns the board's copy,
