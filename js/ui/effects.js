@@ -64,15 +64,29 @@ function shakeHud(strength = 1) {
   );
 }
 
+// The equipped coin rain as a list of characters. Usually one ("◆"), but a
+// rain can mix several ("🐱🐶"): each coin picks one at random.
+function coinGlyphs() {
+  const text = ui.coinGlyph || "◆";
+  if (window.Intl && Intl.Segmenter) {
+    return [...new Intl.Segmenter().segment(text)].map((part) => part.segment);
+  }
+  return Array.from(text);
+}
+
+// Plain symbols take the theme's gold colour + glow; emoji keep their own colours.
+const TEXT_COINS = /^[◆★♪♫]$/;
+
 // Gold coins (◆) that fly up from (x%, y%) and fall with gravity.
 function spawnCoins(count, x = 50, y = 75) {
   if (REDUCED_MOTION) return;
   count = Math.round(count * CONFIG.BLING);
+  const glyphs = coinGlyphs();
   for (let i = 0; i < count; i++) {
     const coin = document.createElement("span");
     coin.className = "coin";
-    coin.textContent = ui.coinGlyph || "◆";
-    if (!/^[◆★]$/.test(coin.textContent)) coin.classList.add("is-emoji");
+    coin.textContent = glyphs[Math.floor(Math.random() * glyphs.length)];
+    if (!TEXT_COINS.test(coin.textContent)) coin.classList.add("is-emoji");
     coin.style.left = `${x + (Math.random() - 0.5) * 20}%`;
     coin.style.top = `${y}%`;
     coin.style.setProperty("--dx", `${(Math.random() - 0.5) * 380}px`);
@@ -191,7 +205,7 @@ function warmUpRewards() {
     el.levelUpNumber.textContent = "0123456789";
     const coin = document.createElement("span");
     coin.className = "coin";
-    coin.textContent = ui.coinGlyph || "◆";
+    coin.textContent = coinGlyphs().join("");
     coin.style.visibility = "hidden";
     el.particles.appendChild(coin);
     layOut(el.screens.levelUp);

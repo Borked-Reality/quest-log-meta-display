@@ -70,7 +70,7 @@ export default async function (t, page, shot) {
   t.ok(await unlocked(page, "potato"), "finding the golden potato unlocks Spud Luck");
 
   // ----- Achievement-only shop items -----
-  await page.eval(`ui.shopIndex = SHOP_ITEMS.findIndex((i) => i.id === "theme-midnight"); showShopScreen(); true`);
+  await page.eval(`openShopItem("theme-midnight"); true`);
   t.eq(await page.eval("[el.shopPrice.textContent, el.hintConfirmLabel.textContent]"), ["🔒 EARN IT", "Locked"],
     "achievement items show as locked in the shop");
   t.ok((await page.eval("el.shopDesc.textContent")).includes("secret achievement"), "…without spoiling a secret");

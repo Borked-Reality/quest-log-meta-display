@@ -51,6 +51,7 @@ function announceAchievements() {
 
   if (list.length > 3) {
     notify({
+      gremlin: "achievement",
       kind: "achievement",
       label: `🏆 ${list.length} ACHIEVEMENTS UNLOCKED`,
       title: list.slice(0, 4).map((a) => a.icon).join(" ") + (list.length > 4 ? " …" : ""),
@@ -60,6 +61,7 @@ function announceAchievements() {
   }
   list.forEach((a) => {
     notify({
+      gremlin: "achievement",
       kind: "achievement",
       label: a.secret ? "🤫 SECRET ACHIEVEMENT" : "🏆 ACHIEVEMENT UNLOCKED",
       title: `${a.icon} ${a.name}`,

@@ -44,6 +44,7 @@ function offerDailyChest() {
   if (pending) return;
   const day = nextLoginDay();
   notify({
+    gremlin: "dailyChest",
     kind: "gift",
     label: "🎁 DAILY CHEST",
     title: `Day ${day} login reward`,

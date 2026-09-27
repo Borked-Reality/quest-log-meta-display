@@ -101,7 +101,10 @@ Still unconfirmed: whether walking resets the stretch timer via
 - **Feel.** Playful, slightly retro RPG HUD, not a corporate dashboard or
   heavy cyberpunk.
 - **Animations** are short (150–600ms), with a few longer on purpose: level-up
-  ≈ 4s, treasure chest ≈ 7.5–9.5s. The level-up can be skipped with a pinch. The chest deliberately can't (only a swipe down escapes). Honor `prefers-reduced-motion` (see the bottom of
+  ≈ 4s, treasure chest ≈ 7.5–9.5s. How long reward screens then *stay up* is
+  the "Reward screens" setting (`CONFIG.REWARD_SCREEN_MS` via `moveOnAfter()`
+  in `js/ui/rewards.js`): Quick, Relaxed (default, time to read everything)
+  or Wait for pinch. Never hard-code a reward screen's `setTimeout`. The level-up can be skipped with a pinch. The chest deliberately can't (only a swipe down escapes). Honor `prefers-reduced-motion` (see the bottom of
   `style.css`).
 - **The hint bar at the bottom always says what each gesture does right now.**
   Any new screen or state must update it.
@@ -112,6 +115,7 @@ Still unconfirmed: whether walking resets the stretch timer via
 |---|---|
 | `index.html` | The `#hud` (600×600): header (clock/date/timer badge, gold, streak), `.screen-area` with one `div.screen` per screen, XP bar, hint bar, idle glance, flash overlay. Below it, `.dev-panel` (desktop test buttons, hidden at ≤640px). |
 | `style.css` | Tokens → stage/layout → per-screen sections → XP bar → hints → dev panel → effects → **cosmetics** (chest skins, themes, fonts, shop) → reduced motion. |
+| `icons/` | App icon + logo: the treasure chest in pixel art (wood skin). `icon.svg` is the favicon; `logo.svg` (on black, gold glow) is the source of `apple-touch-icon.png` (180px) and `logo-512.png`. If the chest art changes, update these too. |
 | `fonts/` | Bundled `.woff2` fonts for the shop (Latin subset) and their licences (OFL / Apache). They're only downloaded when used. |
 | `js/` | All logic, split by job into plain scripts (below). |
 
@@ -131,9 +135,10 @@ last.
 |---|---|---|
 | `js/config.js` | Tunable numbers | `CONFIG` |
 | `js/data/quests.js` | Starting quest board | `QUESTS`, `BASE_QUEST_COUNT`, `QUEST_TYPE_LABELS`, `INCOMING_QUEST_POOL` |
-| `js/data/loot.js` | Chest items | `RARITIES`, `LOOT_TABLE` (items with a `buff` / `instant` effect, incl. `gamble`), `CHEST_GOLD` |
+| `js/data/loot.js` | Chest items | `RARITIES`, `LOOT_TABLE` (64 items with a `buff` / `instant` effect, incl. `gamble` with optional `win` / `lose` lines, and an optional gremlin `quip`), `CHEST_GOLD` |
+| `js/data/gremlin-lines.js` | The gremlin's lines | `GREMLIN_LINES` (by moment: `complete`, `completeLate`, `levelUp`, `chestEpic`, `water`, …; `{placeholders}`) |
 | `js/data/achievements.js` | Achievements | `ACHIEVEMENTS` (goal, `progress(player)`, `secret`, `reward: { gold } \| { item }`) |
-| `js/data/shop-items.js` | Shop catalogue | `SHOP_ITEMS` (kind + value + price), `SHOP_KIND_LABELS`, `DEFAULT_EQUIPPED`, `SOUND_PACKS` |
+| `js/data/shop-items.js` | Shop catalogue | `SHOP_ITEMS` (kind + value + price), `SHOP_KIND_LABELS`, `SHOP_CATEGORIES` (the category cards), `DEFAULT_EQUIPPED`, `SOUND_PACKS` |
 | `js/core/state.js` | State + saving | `createNewPlayer()`, `player`, `ui`, `settings`, `applySettings()`, `nowMs()`, `clock()`, `saveProgress/loadProgress`, `resetProgress(askFirst)` |
 | `js/core/progression.js` | Levels + streak | `xpNeededFor`, `LEVEL_TITLES`, `titleFor`, `addXp`, `dateKey`, `checkStreak` (uses Streak Shields) |
 | `js/core/loot.js` | Loot + power-ups | `rollRarity`, `rollForLoot`, `openChest` (applies the item, records the find/stats), `activeBuffs`, `buffMult(stat)`, `chestChance`, `comboWindowMs` |
@@ -143,9 +148,10 @@ last.
 | `js/features/settings.js` | Settings screen | `SETTINGS_ITEMS`, `changeSetting`, `browseSettings` |
 | `js/features/quest-menu.js` | Quest board pinches | `questTap` (double pinch), `questHold` / `openQuestMenu` (Edit / Remove), `armDouble`, `questActions`/`primaryAction`, `cycleQuestAction`, `runQuestAction`, `removeQuest`/`undoRemove`, `restoreHiddenQuests`, `startEditQuest`/`commitEditedQuest` |
 | `js/features/daily-chest.js` | Daily login chest | `offerDailyChest`, `openDailyChest`, `nextLoginDay`, `minTierForDay` |
+| `js/features/gremlin.js` | The sarcastic AI | `quip(kind, vars, { always })`, `completeQuip`, `chestQuip`, `showQuip`; `settings.sass` (off / some / lots) |
 | `js/features/achievements.js` | Achievements logic | `checkAchievements` (runs in `saveProgress`), `announceAchievements`, `recordCompletionForAchievements`, secrets: `trackSecretSequence`, `pokeTheVoid` |
 | `js/features/profile.js` | Profile | `showProfileScreen`, `browseProfile`, `renderProfileScreen`, `profileStats`, `collectionItems` |
-| `js/features/shop.js` | Shop | `applyCosmetics(preview)`, `isOwned`/`isEquipped`, `showShopScreen`, `browseShop`, `previewShopItem`, `shopAction` → `buyItem` / `equipItem` |
+| `js/features/shop.js` | Shop | `applyCosmetics(preview)`, `isOwned`/`isEquipped`, `showShopScreen(keepPlace)`, category cards (`browseShopCategories`, `openShopCategory`, `closeShopCategory`, `shopCategorySummary`), `openShopItem(id)`, `browseShop` (within a kind), `previewShopItem`, `shopAction` → `buyItem` / `equipItem` |
 | `js/features/time.js` | Clock, timers, schedules | `formatTime/Date/Countdown/Schedule`, `questMinutes`, `startTimer`/`togglePauseTimer`/`stopTimer`/`finishTimer`, `checkSchedules`, `tick` (1s ticker) |
 | `js/features/daily.js` | Daily reset + nudges | `checkForNewDay`, `announceOpenedQuests`, `checkReminders` |
 | `js/features/motion.js` | Motion sensor | `Motion`, `markActive` |
@@ -203,7 +209,7 @@ need a default there**.
 
 **`settings`** (saved under `questLogHud.settings.v1`, and not touched by
 Reset): soundEnabled, volume, clock24, twoPinchComplete, autoHideSeconds,
-reminders, timers.
+reminders, timers, sass, rewardPace.
 
 **`ui`** (never saved): current screen, queues (`rewardQueue`, `alertQueue`),
 timers, `armed`, `undo`, `draftQuest`, `idle`, and similar.
@@ -217,7 +223,7 @@ timers, `armed`, `undo`, `draftQuest`, `idle`, and similar.
 | `quest` | The board: one quest at a time |
 | `allClear` | Nothing left on the board |
 | `add` | Voice/typed entry → preview |
-| `shop` | Cosmetics: one item per card, live preview |
+| `shop` | Cosmetics. Opens on 5 category cards (`SHOP_CATEGORIES`: owned / equipped / affordable); pinch opens one, then one item per card with live preview. Middle pinch / ▼ goes back to the cards (`ui.shopCategory = null`) |
 | `profile` | Stats card, then the collection grid (◀ ▶ moves the cursor) |
 | `settings` | One setting per card |
 | `complete` → `loot` (treasure chest) → `levelUp` | Reward sequence, driven by `ui.rewardQueue` + `advanceFromRewards()`. The chest comes before the level-up because chest XP can cause the level-up |
@@ -412,14 +418,23 @@ the profile from Meta's optimize skill. What mattered:
 
 **Add a shop item:**
 1. An entry in `SHOP_ITEMS` (`kind` + `value` + `price` + icon/name/desc).
+   It shows up in its kind's category automatically, in catalogue order
+   (so keep each kind's items roughly cheapest first). A brand-new *kind*
+   also needs a `SHOP_CATEGORIES` card and a `SHOP_KIND_LABELS` entry.
 2. The look for its `value`:
    - **theme:** a `:root[data-theme=…]` block of colour variables.
    - **font:** a `@font-face` plus `:root[data-font=…]` with
      `--font-display` / `--display-adjust`.
    - **chest:** a `.chest-svg[data-skin=…]` block of `--c-*` colours.
    - **sound:** a `SOUND_PACKS` entry.
-   - **coin:** just the character.
-3. Run the overflow check (see *Testing*) for any new font or theme.
+   - **coin:** just the character, or several for a mix (`"🐱🐶"`: each coin
+     picks one). Plain symbols take the theme's gold only if listed in
+     `TEXT_COINS` (`js/ui/effects.js`); anything else is drawn as emoji.
+3. Run the tests. The `layout` suite checks every shop font fits every
+   screen, and `cosmetics` checks every theme, chest skin, font and sound
+   pack actually changes something. For a new font, tune `--display-adjust`
+   by eye too: condensed all-caps fonts need a bigger value (Comic Boom 0.82)
+   or they come out tiny.
 
 **Add an achievement:**
 1. An entry in `ACHIEVEMENTS` (`js/data/achievements.js`) with `goal` and
@@ -436,9 +451,21 @@ the profile from Meta's optimize skill. What mattered:
 3. Use it (or map it into `CONFIG` in `applySettings()`).
 
 **Add an alert type:**
-1. Call `notify({ kind, label, title, detail, questId?, action? })`.
+1. Call `notify({ kind, label, title, detail, questId?, action?, gremlin? })`.
+   `gremlin` names a list in `GREMLIN_LINES` for the 👾 line on the alert.
 2. Add a `[data-kind="…"]` color in CSS if new.
 3. Handle any new `action` in `closeAlert()` and `confirmLabel()`.
+
+**Add a gremlin line / moment:**
+1. Add lines to a list in `GREMLIN_LINES` (`js/data/gremlin-lines.js`), or
+   a `quip:` to a loot item. Keep them under ~70 characters: the `gremlin`
+   test checks ≤ 72, and the `layout` test checks the longest one fits.
+2. **Tone:** sarcastic and teasing about procrastination, late nights and
+   tiny chores, but never actually mean. No jabs at bodies, health, money
+   worries or anything the wearer can't help.
+3. A new moment: call `quip("yourList", vars)` and put the result on screen
+   with `showQuip(node, text)` (an `.ai-line` element). Use `{ always: true }`
+   only for rare, specific moments; generic ones should respect "Some".
 
 **Add a gesture/action:**
 1. Map a key in `KEY_BINDINGS` (keep the Band mapping above intact).
@@ -451,7 +478,7 @@ the profile from Meta's optimize skill. What mattered:
 22+ and Chrome, with no npm. It syntax-checks every file, then drives the
 real `index.html` in headless Chrome with real key presses, suite by suite,
 each from an empty save. Suites live in `tests/suites/`. Shared helpers
-(`prepare` pins the clock to 10:00 and clears start-up alerts, plus
+(`prepare` pins the clock to 10:00, sets Quick reward screens and clears start-up alerts, plus
 `showQuest`, `forceLoot`/`noLoot`, `pinchTwice`) are in
 `tests/lib/helpers.mjs`.
 

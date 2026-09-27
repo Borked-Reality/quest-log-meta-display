@@ -1,13 +1,14 @@
 // Shared test helpers. `page` comes from openBrowser() in browser.mjs.
 
 // Standard starting point for most suites: clock pinned to 10:00 today,
-// reminders off (so nudges don't pop up mid-test), start-up alerts (like
-// the daily chest) cleared, and the quest board showing.
+// reminders off (so nudges don't pop up mid-test), quick reward screens,
+// start-up alerts (like the daily chest) cleared, and the quest board showing.
 export async function prepare(page, { hour = 10 } = {}) {
   await page.eval(`(() => {
     const t = new Date(); t.setHours(${hour}, 0, 0, 0);
     ui.clockOffsetMs = t.getTime() - Date.now();
     settings.reminders = false;
+    settings.rewardPace = "quick";        // the reward-pace suite covers the other settings
     ui.alertQueue = []; ui.currentAlert = null;
     player.announcedQuestIds = []; announceOpenedQuests(true);
     markActive();

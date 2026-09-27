@@ -5,11 +5,16 @@
    ========================================================= */
 
 /* ---------- SHOP ---------- */
-// Swipe up from Add Quest. One item per card: ◀ ▶ browses, and the item
-// is PREVIEWED LIVE on the whole HUD while you look at it (theme, font,
-// chest, coin rain, and a sound sample) — try before you buy.
-// Pinch: Buy (two pinches — it's your gold) → it equips right away.
-// Owned items: pinch to Equip. Leaving the shop puts back what's equipped.
+// Swipe up from Add Quest. Two levels:
+//   1. CATEGORY CARDS (Themes, Fonts, Sound Packs, Chest Skins, Coin Rain):
+//      ◀ ▶ picks one (it shows owned / equipped / what you can afford),
+//      pinch opens it.
+//   2. ITEMS of that kind, one per card: ◀ ▶ browses, and the item is
+//      PREVIEWED LIVE on the whole HUD (theme, font, chest, coin rain, a
+//      sound sample) — try before you buy. Pinch: Buy (two pinches — it's
+//      your gold) → it equips right away. Owned items: pinch to Equip.
+//      Middle pinch / swipe down: back to the category cards.
+// Leaving the shop (or a category) puts back what's equipped.
 
 function isOwned(item) {
   return item.price === 0 || player.unlocks.includes(item.id);
@@ -21,6 +26,21 @@ function isEquipped(item) {
 
 function currentShopItem() {
   return SHOP_ITEMS[ui.shopIndex];
+}
+
+function currentShopCategory() {
+  return SHOP_CATEGORIES[ui.shopCategoryIndex];
+}
+
+// What a category card shows: owned count, what's equipped, what you can buy.
+function shopCategorySummary(kind) {
+  const items = SHOP_ITEMS.filter((i) => i.kind === kind);
+  return {
+    total: items.length,
+    owned: items.filter(isOwned).length,
+    equipped: items.find(isEquipped),
+    affordable: items.filter((i) => !isOwned(i) && i.price != null && i.price <= player.gold).length,
+  };
 }
 
 // Applies the equipped cosmetics, optionally with one kind overridden
@@ -61,16 +81,57 @@ function setRainbow(on) {
   ui.rainbowTimer = setInterval(paint, 250);         // 4×/s: each repaint restyles the whole HUD
 }
 
-function showShopScreen() {
+// Arriving from Add Quest: the category cards. Coming back down from
+// Profile (keepPlace): wherever you were.
+function showShopScreen(keepPlace = false) {
+  if (!keepPlace) ui.shopCategory = null;
   showScreen("shop");
+  renderAll();
+  if (ui.shopCategory) previewShopItem();
+}
+
+// ◀ ▶ on the category cards.
+function browseShopCategories(direction) {
+  const count = SHOP_CATEGORIES.length;
+  ui.shopCategoryIndex = (ui.shopCategoryIndex + direction + count) % count;
+  Sound.play("click", { direction });
+  renderAll();
+}
+
+// Pinch on a category card: browse that kind, starting on what's equipped.
+function openShopCategory(kind = currentShopCategory().kind) {
+  const equipped = SHOP_ITEMS.find((i) => i.kind === kind && isEquipped(i));
+  openShopItem((equipped || SHOP_ITEMS.find((i) => i.kind === kind)).id);
+  Sound.play("show");
+}
+
+// Straight to one item (its category opens around it).
+function openShopItem(id) {
+  const index = SHOP_ITEMS.findIndex((i) => i.id === id);
+  const item = SHOP_ITEMS[index];
+  ui.shopCategory = item.kind;
+  ui.shopCategoryIndex = SHOP_CATEGORIES.findIndex((c) => c.kind === item.kind);
+  ui.shopIndex = index;
+  if (ui.screen !== "shop") showScreen("shop");
   renderAll();
   previewShopItem();
 }
 
+// Middle pinch / swipe down inside a category: back to the category cards.
+function closeShopCategory() {
+  ui.shopCategory = null;
+  clearTimeout(ui.shopPreviewTimer);
+  el.screens.shop.classList.remove("is-bought");
+  applyCosmetics();                              // end the preview
+  renderAll();
+}
+
+// ◀ ▶ inside a category: the next item of the same kind (wraps round).
 function browseShop(direction) {
   el.screens.shop.classList.remove("is-bought");   // stamp belongs to the last item
-  const count = SHOP_ITEMS.length;
-  ui.shopIndex = (ui.shopIndex + direction + count) % count;
+  const indexes = SHOP_ITEMS.map((item, i) => i).filter((i) => SHOP_ITEMS[i].kind === ui.shopCategory);
+  const at = indexes.indexOf(ui.shopIndex);
+  ui.shopIndex = indexes[(at + direction + indexes.length) % indexes.length];
   Sound.play("click", { direction });
   renderAll();
   previewShopItem();

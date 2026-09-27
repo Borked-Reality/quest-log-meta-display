@@ -39,6 +39,7 @@ function checkForNewDay() {
     // Timed quests open during the day get their own announcement later.
     announceOpenedQuests(true);
     notify({
+      gremlin: "newDay",
       kind: "info",
       label: "NEW DAY",
       title: "Daily quests refreshed",
@@ -56,6 +57,7 @@ function announceOpenedQuests(silent) {
     player.announcedQuestIds.push(quest.id);
     if (silent) return;
     notify({
+      gremlin: "newQuest",
       kind: "quest",
       label: "DAILY QUEST UNLOCKED",
       title: quest.title,
@@ -85,6 +87,7 @@ function checkReminders() {
 
       ui.lastReminderAt[quest.id] = nowMs();
       notify({
+        gremlin: "water",              // pace reminders are the water one
         kind: "reminder",
         label: r.label,
         title: r.text,
@@ -100,6 +103,7 @@ function checkReminders() {
 
       ui.lastReminderAt[quest.id] = nowMs();
       notify({
+        gremlin: "still",
         kind: "reminder",
         label: `STILL FOR ${Math.round(stillFor)} MIN`,
         title: r.text,

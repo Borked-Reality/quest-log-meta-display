@@ -81,9 +81,9 @@ function openChest(item) {
       if (gamble.max !== undefined) won = gamble.min + Math.floor(Math.random() * (gamble.max - gamble.min + 1));
       else if (Math.random() < gamble.chance) won = gamble.gold;
       if (won) { player.gold += won; player.lifetime.goldEarned += won; }
-      note = gamble.max !== undefined
-        ? (won ? `You scratched ${won} ◆!` : "Nothing. Figures.")
-        : (won ? gamble.win : "");
+      // The result line: the item's own win / lose text, else a default.
+      if (won) note = (gamble.win || `You scratched ${won} ◆!`).replace("{gold}", won);
+      else note = gamble.lose || (gamble.max !== undefined ? "Nothing. Figures." : "");
       noteGold = won;
       if (item.id === "potato" && won) player.counters.goldenPotato = 1;   // secret achievements
       if (item.id === "scratch" && !won) player.counters.zeroScratch = 1;

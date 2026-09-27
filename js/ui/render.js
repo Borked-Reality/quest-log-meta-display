@@ -55,6 +55,13 @@ const el = {
   achBarFill: document.getElementById("achBarFill"),
   achProgressText: document.getElementById("achProgressText"),
   collectionGrid: document.getElementById("collectionGrid"),
+
+  // The gremlin's lines (js/features/gremlin.js)
+  completeQuip: document.getElementById("completeQuip"),
+  levelUpQuip: document.getElementById("levelUpQuip"),
+  chestQuip: document.getElementById("chestQuip"),
+  alertQuip: document.getElementById("alertQuip"),
+  allClearSub: document.getElementById("allClearSub"),
   collectionDetail: document.getElementById("collectionDetail"),
   collectionName: document.getElementById("collectionName"),
   collectionEffect: document.getElementById("collectionEffect"),
@@ -144,6 +151,11 @@ const el = {
 // Shows exactly one screen.
 function showScreen(name) {
   const leavingShop = ui.screen === "shop" && name !== "shop";
+  // Arriving at All Clear: a fresh line from the gremlin (or the classic one).
+  if (name === "allClear" && ui.screen !== "allClear") {
+    const line = quip("allClear");
+    el.allClearSub.textContent = line ? `👾 ${line}` : "The realm is at peace… for now.";
+  }
   ui.screen = name;
   if (leavingShop) {
     clearTimeout(ui.shopPreviewTimer);
@@ -302,6 +314,7 @@ function confirmLabel() {
     const item = currentSettingItem();
     return { text: item.key === "reset" ? "Reset" : item.key === "restore" ? "Restore" : "Change", enabled: true };
   }
+  if (ui.screen === "shop" && !ui.shopCategory) return { text: "Open", enabled: true };
   if (ui.screen === "shop") {
     const item = currentShopItem();
     if (isOwned(item)) return isEquipped(item) ? { text: "Equipped ✓", enabled: false } : { text: "Equip", enabled: true };
@@ -403,6 +416,8 @@ function renderAddScreen() {
 }
 
 function renderShopScreen() {
+  el.screens.shop.dataset.view = ui.shopCategory ? "item" : "categories";
+  if (!ui.shopCategory) { renderShopCategory(); return; }
   const item = currentShopItem();
   el.shopKind.textContent = `🛒 ${SHOP_KIND_LABELS[item.kind]}`;
   el.shopIcon.textContent = item.icon;
@@ -414,12 +429,29 @@ function renderShopScreen() {
   el.shopDesc.textContent = unlockBy && !isOwned(item)
     ? `${item.desc} · 🏆 ${unlockBy.secret ? "secret achievement" : unlockBy.name}`
     : item.desc;
-  el.shopPager.textContent = `${ui.shopIndex + 1} / ${SHOP_ITEMS.length}`;
+  const ofKind = SHOP_ITEMS.filter((i) => i.kind === item.kind);
+  el.shopPager.textContent = `${ofKind.indexOf(item) + 1} / ${ofKind.length}`;
 
   const owned = isOwned(item);
   const locked = !owned && item.price == null;
   el.shopPrice.textContent = owned ? (isEquipped(item) ? "EQUIPPED ✓" : "OWNED") : locked ? "🔒 EARN IT" : `${item.price} ◆`;
   el.shopPrice.dataset.state = owned ? "owned" : locked ? "locked" : player.gold >= item.price ? "buy" : "poor";
+}
+
+// The Shop's first page: one card per kind.
+function renderShopCategory() {
+  const category = currentShopCategory();
+  const { total, owned, equipped, affordable } = shopCategorySummary(category.kind);
+  el.shopKind.textContent = "🛒 SHOP";
+  el.shopIcon.textContent = category.icon;
+  el.shopIcon.hidden = false;
+  el.shopChest.style.display = "none";
+  el.shopName.textContent = category.name;
+  el.shopDesc.textContent = `Equipped: ${equipped ? equipped.name : "—"}`
+    + (affordable ? ` · ${affordable} you can buy` : "");
+  el.shopPrice.textContent = `${owned} / ${total} owned`;
+  el.shopPrice.dataset.state = affordable ? "buy" : "owned";
+  el.shopPager.textContent = `${ui.shopCategoryIndex + 1} / ${SHOP_CATEGORIES.length}`;
 }
 
 // The quest menu chips inside the confirm bar: [✓ Complete] [✎ Edit] [✕ Remove]
@@ -489,6 +521,7 @@ function showAlertScreen(alert) {
   el.alertLabel.textContent = alert.label;
   el.alertTitle.textContent = alert.title;
   el.alertDetail.textContent = alert.detail || "";
+  showQuip(el.alertQuip, alert.gremlin ? quip(alert.gremlin) : "");
   showScreen("alert");
   renderAll();
   if (alert.kind === "achievement") {                 // 🏆 fanfare

@@ -24,7 +24,7 @@ const ONLY = args.filter((a) => !a.startsWith("--"));
 // Suite files run in this order.
 const SUITES = [
   "startup", "navigation", "quest-menu", "pinch", "add-quest", "time",
-  "chest", "warmup", "daily-chest", "shop", "cosmetics", "profile", "achievements", "layout", "sounds",
+  "chest", "warmup", "gremlin", "reward-pace", "daily-chest", "shop", "cosmetics", "profile", "achievements", "layout", "sounds",
 ];
 
 let passed = 0;

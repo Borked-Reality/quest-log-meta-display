@@ -75,12 +75,15 @@ const ui = {
   // | "add" | "settings"
   screen: "quest",
   settingsIndex: 0,    // which setting card is showing
-  shopIndex: 0,        // which shop card is showing
+  shopCategory: null,  // shop: the kind being browsed ("theme"…), or null = the category cards
+  shopCategoryIndex: 0, // which category card is showing
+  shopIndex: 0,        // which shop item is showing (index in SHOP_ITEMS)
   profileIndex: 0,     // profile: 0 = stats, 1… = collection item
   editingQuestId: null, // Add card is editing this quest (quest menu → Edit)
   newAchievements: [],  // unlocked, waiting to be announced
   achievementTimer: null,
   recentActions: [],   // for the ↑↑↓↓◀▶◀▶ secret
+  recentQuips: [],     // the gremlin's last lines (so it doesn't repeat itself)
   voidPokes: 0,        // holds on the all-clear screen (secret)
   shopPreviewTimer: null,
   coinGlyph: "◆",      // what the coin fountain throws (equipped coin rain)
@@ -118,6 +121,8 @@ const settings = {
   autoHideSeconds: 20,      // 10 | 20 | 30 | 60 | 0 (never)
   reminders: true,          // hydration / stretch nudges
   timers: true,             // quests with a duration start a timer
+  sass: "some",             // the gremlin's sarcasm: "off" | "some" | "lots"
+  rewardPace: "relaxed",    // reward screens: "quick" | "relaxed" | "pinch" (wait for a pinch)
 };
 
 // Copies settings into CONFIG, which the rest of the code reads.

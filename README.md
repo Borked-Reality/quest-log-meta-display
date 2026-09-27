@@ -1,3 +1,5 @@
+<img src="icons/logo-512.png" alt="Quest Log // HUD logo: a pixel-art treasure chest" width="128">
+
 # Quest Log // HUD
 
 A glanceable RPG quest log for the **Meta Ray-Ban Display** glasses. Real-life
@@ -103,9 +105,10 @@ The bottom hint bar always shows what each gesture does on the current screen.
   - It can't be skipped with a pinch. Enjoy the show. (A swipe down still
     escapes if you really need the HUD gone.)
 
-  There are **40 items**, from sensible to deeply scuffed (Suspicious Potato,
-  Gas Station Sushi, Haunted Toaster, Cursed Scratch Card, Alien
-  Tupperware…), and every one really does something:
+  There are **64 items**, from sensible to deeply scuffed (Suspicious Potato,
+  Gas Station Sushi, Cheese of Unknown Age, Legally Binding Fish, a T. Rex
+  With Tiny Arms, a Dragon who's an unpaid intern…), and every one really
+  does something:
   - Timed power-ups: more XP (☕ 🥤 🔮 👑), more gold (🔋 🧲 📿), double XP
     on water/stretch steps (🧃 💧), better chest odds (🍪 🧦), rarer chests
     (🍀 🐇), longer combos (🎧 🌀), or several at once (🦄).
@@ -126,7 +129,7 @@ The bottom hint bar always shows what each gesture does on the current screen.
   - **Stats:** quests, XP, gold earned and spent, chests, best streak and
     combo, login streak.
   - **Achievements:** a trophy grid with progress bars.
-  - **Collection:** all 40 chest items. Unfound ones are ❓, and ◀ ▶
+  - **Collection:** all 64 chest items. Unfound ones are ❓, and ◀ ▶
     inspects each one.
 - **Achievements (30, some secret 🤫).**
   - **Unlocking:** they unlock automatically, with a gold pop-up and a
@@ -154,17 +157,31 @@ The bottom hint bar always shows what each gesture does on the current screen.
     sensor, or a timer on desktop.
 - **Idle mode.** After 20 seconds, or on a swipe down, the HUD fades to a
   one-line glance. Black is see-through on the display. Notifications wake it.
-- **Shop.** Spend gold on cosmetics. Each one previews live on the whole HUD
-  while you browse it (try before you buy). Buying takes two pinches.
+- **Shop.** Spend gold on cosmetics. It opens on five category cards
+  (Themes, Fonts, Sound Packs, Chest Skins, Coin Rain) showing what you own,
+  what's equipped and how many you can afford; pinch one to browse just that
+  kind. Each item previews live on the whole HUD while you browse it (try
+  before you buy). Buying takes two pinches. Middle pinch goes back to the
+  categories.
   - **Themes:** Pocket Brick, Arctic, Vaporwave, Ember, Gold Rush, Scuffed CRT
-    (with scanlines).
-  - **Fonts:** Terminal, Sharpie, LOUD, Pixel, Glitch.
+    (with scanlines), Bubblegum, Matcha, Deep Sea, Sunset, Spectral.
+  - **Fonts:** Terminal, Sharpie, LOUD, Pixel, Glitch, Comic Neue, Comic Boom,
+    Sci-Fi, Spooky.
   - **Sound packs** that change every sound: 8-Bit, Scuffed Kazoo, Crystal
-    Bells, Deep Fried.
-  - **Chest skins:** Soggy Cardboard Box, Golden, Mimic (with teeth), Crystal.
-  - **Coin rain:** stars, pizza, ducks, frogs, cash.
+    Bells, Deep Fried, Lo-Fi Tape, Chipmunk, Underwater, Theremin.
+  - **Chest skins:** Soggy Cardboard Box, Golden, Mimic (with teeth), Crystal,
+    Bone, Candy, Slime, Lava, Neon (just the glowing outline).
+  - **Coin rain:** stars, pizza, ducks, frogs, cash, music notes, donuts,
+    tacos, bees, and cats & dogs (a mix).
+- **The gremlin 👾.** A sarcastic AI lives in your glasses and pokes at you:
+  on quest complete (it notices 1 AM chores, overdue quests and quests you
+  "finished" seconds after adding them), on chest results (many items have
+  their own line), level ups, the all-clear screen and reminders. It never
+  repeats a recent line. **AI sass** in Settings: Off / Some / Lots.
 - **Settings on the glasses.** Sound, volume, 12/24h clock, one or two pinches
-  to complete, auto-hide delay, reminders, timers, and reset.
+  to complete, auto-hide delay, reminders, reward screens (Quick / Relaxed /
+  Wait for pinch: how long Level Up, chests etc. stay up), AI sass, timers,
+  and reset.
 - **Sound.** A small synth built on the Web Audio API with no audio files.
   Rewards are layered and escalate; reminders are deliberately plain.
 - **Saves automatically** in the browser (`localStorage`).
@@ -189,6 +206,7 @@ CLAUDE.md    Points Claude Code at AGENTS.md
 ROADMAP.md   What's next, known limits, ideas
 tests/       Automated tests: node tests/run.mjs
 fonts/       Bundled shop fonts (.woff2) + their open licences
+icons/       App icon + logo: the treasure chest (favicon, home screen, README)
 ```
 
 ### Common tweaks

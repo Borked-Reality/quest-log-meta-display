@@ -4,6 +4,15 @@
    Plain script (no modules). Loaded in order by index.html.
    ========================================================= */
 
+// Moves on from a reward screen by itself after the time the "Reward
+// screens" setting gives it (CONFIG.REWARD_SCREEN_MS), plus reading time
+// for a gremlin line. "Wait for pinch" never moves on by itself.
+function moveOnAfter(screen, { quip = false } = {}) {
+  const times = CONFIG.REWARD_SCREEN_MS[settings.rewardPace];
+  if (!times) return;                            // wait for a pinch
+  ui.advanceTimer = setTimeout(advanceFromRewards, times[screen] + (quip ? times.quip : 0));
+}
+
 // The celebration is a short, timed sequence (sound and visuals line up):
 //   0ms    impact + flash + particles + arpeggio
 //   150ms  XP counts up, ticking as it climbs
@@ -25,6 +34,9 @@ function showCompleteScreen(quest, levelsGained, combo = 1, gains = { xp: quest.
   el.comboBanner.hidden = combo < 2;
   el.comboBanner.textContent = `COMBO ×${combo}`;
 
+  const line = completeQuip(quest, combo);
+  showQuip(el.completeQuip, line);
+
   showScreen("complete");
   renderControls();
   renderStats();
@@ -41,7 +53,8 @@ function showCompleteScreen(quest, levelsGained, combo = 1, gains = { xp: quest.
   setTimeout(() => Sound.play("coin"), 700);
 
   // Level up: move on to the fanfare a little sooner.
-  ui.advanceTimer = setTimeout(advanceFromRewards, levelsGained > 0 ? 1700 : CONFIG.COMPLETE_SCREEN_MS);
+  // (A little longer when the gremlin has something to say, so you can read it.)
+  moveOnAfter(levelsGained > 0 ? "completeThenLevelUp" : "complete", { quip: !!line });
 }
 
 // LEVEL UP: the big one. Timed to the fanfare in SOUNDS.levelUp:
@@ -68,6 +81,7 @@ function showLevelUpScreen({ from, to, bonusGold, newTitle }) {
     ? `New title: ${newTitle}`
     : `Next level: ${xpNeededFor(to)} XP`;
   el.levelUpBonus.textContent = `+${bonusGold} ◆ level bonus`;
+  showQuip(el.levelUpQuip, quip("levelUp", { level: to }, { always: true }));
 
   screen.classList.remove("is-impact", "is-pulse");
   showScreen("levelUp");
@@ -91,7 +105,7 @@ function showLevelUpScreen({ from, to, bonusGold, newTitle }) {
     ["var(--gold)", "var(--green)", "var(--cyan)", "var(--purple)"].forEach((c) => spawnParticles(c, 10));
   });
 
-  ui.advanceTimer = setTimeout(advanceFromRewards, CONFIG.LEVEL_UP_SCREEN_MS);
+  moveOnAfter("levelUp");
 }
 
 // Plays a class-triggered CSS animation again: takes the class off, lets
@@ -144,6 +158,8 @@ function showChestScreen({ item, gold, isNew, note, title }) {
   el.lootName.textContent = item.name;
   el.lootEffect.textContent = item.effect;
   el.chestNote.textContent = note || "";
+  showQuip(el.chestQuip, chestQuip(item));          // hidden until the reveal, like the rest
+  el.chestQuip.parentElement.classList.toggle("has-quip", !el.chestQuip.hidden);
   el.chestGold.textContent = "0";
   buildReel(item, winnerIndex);
 
@@ -333,5 +349,5 @@ function showChestResult() {
   spawnCoins(8, 50, 70);
   if (ui.chest.isNew) ui.effectTimers.push(setTimeout(() => Sound.play("newItem"), 350));
 
-  ui.advanceTimer = setTimeout(advanceFromRewards, 3000);
+  moveOnAfter("chest", { quip: !el.chestQuip.hidden });
 }

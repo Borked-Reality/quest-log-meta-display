@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quest Log // HUD</title>
-  <link rel="icon" href="data:,">  <!-- no favicon request (saves a 404 round trip on the glasses) -->
+  <!-- App icon: the treasure chest (icons/). Tiny, and loaded after the page. -->
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -72,6 +74,7 @@
           <span class="reward-gold big">+<span id="completeGold">0</span> ◆</span>
         </div>
         <div id="completeBoost" class="complete-boost" hidden>⚡ ×1.5 XP</div>
+        <div id="completeQuip" class="ai-line" hidden></div>
       </div>
 
       <!-- SCREEN 2b: LEVEL UP (its own screen, timed to the fanfare) -->
@@ -82,6 +85,7 @@
         <div class="levelup-number"><span class="levelup-lv">LV</span><span id="levelUpNumber">2</span></div>
         <div id="levelUpTitle" class="levelup-title">New title: Apprentice</div>
         <div id="levelUpBonus" class="levelup-bonus">+10 ◆ level bonus</div>
+        <div id="levelUpQuip" class="ai-line levelup-quip" hidden></div>
       </div>
 
       <!--
@@ -159,13 +163,14 @@
           </div>
           <div id="chestNote" class="chest-note"></div>
           <div class="chest-gold">+<span id="chestGold">0</span> ◆ bonus</div>
+          <div id="chestQuip" class="ai-line" hidden></div>
         </div>
       </div>
 
       <!-- SCREEN 4: ALL QUESTS CLEARED -->
       <div id="screenAllClear" class="screen" hidden>
         <div class="complete-heading">ALL QUESTS CLEAR</div>
-        <div class="allclear-sub">The realm is at peace… for now.</div>
+        <div id="allClearSub" class="allclear-sub">The realm is at peace… for now.</div>
         <div class="allclear-hint">Pinch for a new round · ▲ swipe up to add a quest</div>
         <div class="confirm-bar">
           <div class="confirm-text">Pinch again for a new round</div>
@@ -205,6 +210,7 @@
         <div id="alertLabel" class="alert-label">NEW SIDE QUEST</div>
         <div id="alertTitle" class="alert-title">Refill your water bottle</div>
         <div id="alertDetail" class="alert-detail">+10 XP   +2 ◆</div>
+        <div id="alertQuip" class="ai-line" hidden></div>
       </div>
 
       <!--
@@ -365,6 +371,7 @@
   <script src="js/data/loot.js"></script>
   <script src="js/data/shop-items.js"></script>
   <script src="js/data/achievements.js"></script>
+  <script src="js/data/gremlin-lines.js"></script>
   <script src="js/core/state.js"></script>
   <script src="js/core/progression.js"></script>
   <script src="js/core/loot.js"></script>
@@ -377,6 +384,7 @@
   <script src="js/features/daily-chest.js"></script>
   <script src="js/features/profile.js"></script>
   <script src="js/features/achievements.js"></script>
+  <script src="js/features/gremlin.js"></script>
   <script src="js/features/time.js"></script>
   <script src="js/features/daily.js"></script>
   <script src="js/features/motion.js"></script>

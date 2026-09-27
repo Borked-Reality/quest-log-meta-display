@@ -61,13 +61,14 @@ function handleAction(action) {
       if (ui.screen === "profile") {
         pulseHint(el.hintHide);
         Sound.play("hide");
-        showShopScreen();
+        showShopScreen(true);                          // back where you were
         return true;
       }
       if (ui.screen === "shop") {
         pulseHint(el.hintHide);
         Sound.play("hide");
-        showAddScreen();
+        if (ui.shopCategory) closeShopCategory();     // items → category cards
+        else showAddScreen();
         return true;
       }
       if (ui.screen === "add") {
@@ -105,7 +106,8 @@ function handleAction(action) {
         return true;
       }
       if (ui.screen === "shop") {
-        browseShop(action === "prev" ? -1 : 1);
+        if (ui.shopCategory) browseShop(action === "prev" ? -1 : 1);
+        else browseShopCategories(action === "prev" ? -1 : 1);
         return true;
       }
       Sound.play("click", { direction: action === "prev" ? -1 : 1 });
@@ -123,7 +125,10 @@ function handleAction(action) {
         if (confirmTwice("newRound")) { Sound.play("click"); startNewRound(); }
       }
       else if (ui.screen === "settings") changeSetting();
-      else if (ui.screen === "shop") shopAction();
+      else if (ui.screen === "shop") {
+        if (ui.shopCategory) shopAction();
+        else openShopCategory();
+      }
       else if (ui.screen === "add") {
         if (ui.draftQuest) commitDraftQuest();
         else if (el.addInput.value.trim()) submitAddText();
@@ -140,8 +145,13 @@ function handleAction(action) {
       if (ui.undo && (ui.screen === "quest" || ui.screen === "allClear")) { undoLast(); return true; }
       if (ui.screen === "quest" && timerFor(currentQuest()) && !player.timer.done) { stopTimer(); return true; }
       if (ui.screen === "settings") { Sound.play("click"); showProfileScreen(); return true; }
-      if (ui.screen === "profile") { Sound.play("click"); showShopScreen(); return true; }
-      if (ui.screen === "shop") { Sound.play("click"); showAddScreen(); return true; }
+      if (ui.screen === "profile") { Sound.play("click"); showShopScreen(true); return true; }
+      if (ui.screen === "shop") {
+        Sound.play("click");
+        if (ui.shopCategory) closeShopCategory();     // items → category cards
+        else showAddScreen();
+        return true;
+      }
       if (ui.screen === "alert") { Sound.play("click"); closeAlert(false); return true; }
       if (ui.screen === "add") {
         Sound.play("click");

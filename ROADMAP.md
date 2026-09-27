@@ -64,7 +64,21 @@ anything time-based.
 - [ ] **Test the shop on the glasses:** bundled fonts load and read well,
       the CRT scanlines look right on the display, and the sound packs play
       on the speakers.
-- [ ] **More shop stuff:** HUD frames, level-up fanfare variants,
+- [x] **More shop stuff** (2026-09-26): 23 more items, so 61 in all (5 themes,
+      4 fonts, 4 sound packs, 5 chest skins, 5 coin rains). A coin rain can
+      mix characters (Cats & Dogs).
+- [x] **More weird loot + the gremlin** (2026-09-27): 24 more scuffed chest
+      items (64 in all), gamble items with win / lose lines, and a sarcastic
+      AI ("the gremlin", 👾) that comments on completions, chests, level ups,
+      the all-clear screen and alerts. AI sass setting: Off / Some / Lots.
+- [ ] **Test the gremlin + new loot on the glasses:** that 👾 lines are
+      readable (19px italic purple) and the complete screen stays up long
+      enough to read one, and that the new emoji render (🥄 🧀 📎 🍝 🕯️ 🦷
+      🧽 🎈 🐌 🎺 🦢 🍄 🛒 🥠 🪑 🎩 🧿 📼 🥫 🐟 🐉 🧠 🦖 🌌 👾).
+- [ ] **Test the new shop items on the glasses:** that the new emoji render
+      (🍩 🌮 🐝 🐱 🐶 ♪ ♫), and that the Neon Chest's see-through body looks
+      right.
+- [ ] **Even more shop stuff:** HUD frames, level-up fanfare variants,
       particle styles, titles/nameplates, seasonal items, a daily "deal".
 
 ### Inventory and more (planned)

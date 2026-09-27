@@ -144,6 +144,7 @@ function receiveQuest(data) {
   if (!quest) return null;                             // already have it
 
   notify({
+    gremlin: "newQuest",
     kind: "quest",
     label: `NEW ${QUEST_TYPE_LABELS[quest.type]}`,
     title: quest.title,

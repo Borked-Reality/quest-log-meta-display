@@ -136,6 +136,7 @@ function finishTimer() {
   if (!quest) return;
   renderAll();
   notify({
+    gremlin: "timesUp",
     kind: "quest",
     label: "⏱ TIME'S UP",
     title: quest.title,
@@ -155,6 +156,7 @@ function checkSchedules() {
     player.announcedQuestIds.push(key);
     saveProgress();
     notify({
+      gremlin: "questTime",
       kind: "quest",
       label: "⏰ QUEST TIME",
       title: quest.title,

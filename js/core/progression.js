@@ -80,6 +80,7 @@ function checkStreak() {
       player.lastCompletedDate = yesterdayKey();
       saveProgress();
       notify({
+        gremlin: "shield",
         kind: "info",
         label: "🛡️ STREAK SHIELD",
         title: `Streak saved at ${player.streak} days`,
