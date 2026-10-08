@@ -206,7 +206,8 @@ CLAUDE.md    Points Claude Code at AGENTS.md
 ROADMAP.md   What's next, known limits, ideas
 tests/       Automated tests: node tests/run.mjs
 fonts/       Bundled shop fonts (.woff2) + their open licences
-icons/       App icon + logo: the treasure chest (favicon, home screen, README)
+icons/       Logo art: the treasure chest (home screen icon, README logo)
+favicon.png  The app icon in the glasses' app list (with manifest.webmanifest)
 ```
 
 ### Common tweaks

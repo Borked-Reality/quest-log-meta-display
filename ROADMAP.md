@@ -71,6 +71,12 @@ anything time-based.
       items (64 in all), gamble items with win / lose lines, and a sarcastic
       AI ("the gremlin", 👾) that comments on completions, chests, level ups,
       the all-clear screen and alerts. AI sass setting: Off / Some / Lots.
+- [x] **App icon in the glasses' app list** (2026-09-28): the SVG favicon
+      showed a chain icon; a PNG `favicon.png` + `manifest.webmanifest` (like
+      Meta's packager makes) fixed it.
+- [ ] **App icon fills the tile:** it showed as a small circle mid-tile with
+      lots of dead space. Now tighter icons + `"purpose": "maskable"` ones.
+      Check after deploying (remove and re-add the app if the old icon sticks).
 - [ ] **Test the gremlin + new loot on the glasses:** that 👾 lines are
       readable (19px italic purple) and the complete screen stays up long
       enough to read one, and that the new emoji render (🥄 🧀 📎 🍝 🕯️ 🦷

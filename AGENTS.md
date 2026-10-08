@@ -115,7 +115,8 @@ Still unconfirmed: whether walking resets the stretch timer via
 |---|---|
 | `index.html` | The `#hud` (600×600): header (clock/date/timer badge, gold, streak), `.screen-area` with one `div.screen` per screen, XP bar, hint bar, idle glance, flash overlay. Below it, `.dev-panel` (desktop test buttons, hidden at ≤640px). |
 | `style.css` | Tokens → stage/layout → per-screen sections → XP bar → hints → dev panel → effects → **cosmetics** (chest skins, themes, fonts, shop) → reduced motion. |
-| `icons/` | App icon + logo: the treasure chest in pixel art (wood skin). `icon.svg` is the favicon; `logo.svg` (on black, gold glow) is the source of `apple-touch-icon.png` (180px) and `logo-512.png`. If the chest art changes, update these too. |
+| `favicon.png`, `manifest.webmanifest` | The app icon for the glasses' app list (and browser tabs): a 192px PNG of the chest plus a web manifest (name + icons), at the app root. This is the shape Meta's own web-app packager produces (PNG over 52×52 + manifest). Seen on the glasses: an SVG favicon showed a generic chain icon, and without a `"purpose": "maskable"` icon the launcher shrank the icon into a small circle mid-tile. The `startup` test checks all of this. |
+| `icons/` | Icon art, full-bleed black squares (the launcher rounds the corners): `icon.svg` (chest ≈ 88% wide) → `favicon.png` + `icon-512.png`; `icon-maskable.svg` (chest ≈ 75%, safe for any crop) → `maskable-192/512.png` + `apple-touch-icon.png`. `logo.svg` (rounded, glowing) → `logo-512.png` for the README. If the chest art changes, re-render these. |
 | `fonts/` | Bundled `.woff2` fonts for the shop (Latin subset) and their licences (OFL / Apache). They're only downloaded when used. |
 | `js/` | All logic, split by job into plain scripts (below). |
 

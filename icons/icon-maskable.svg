@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1.5 34 34">
-  <!-- Quest Log // HUD app icon ("any"): the chest filling the square, on the
-       HUD's black (see-through on the glasses). Source of favicon.png and
-       icons/icon-512.png. The launcher rounds the corners itself. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4.5 40 40">
+  <!-- Quest Log // HUD maskable icon: full-bleed black, the chest a little
+       smaller so a launcher can crop the tile to its own shape (rounded
+       square, squircle…) without cutting it. Source of icons/maskable-*.png
+       and icons/apple-touch-icon.png. -->
   <defs>
     <radialGradient id="glow" cx="16" cy="15.5" r="21" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ffd166" stop-opacity="0.55"/>
@@ -9,8 +10,8 @@
       <stop offset="1" stop-color="#ffd166" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect x="-1" y="-1.5" width="34" height="34" fill="#000"/>
-  <rect x="-1" y="-1.5" width="34" height="34" fill="url(#glow)"/>
+  <rect x="-4" y="-4.5" width="40" height="40" fill="#000"/>
+  <rect x="-4" y="-4.5" width="40" height="40" fill="url(#glow)"/>
   <!-- The treasure chest from the reward screen (wood skin), 1 unit = 1 pixel -->
   <g shape-rendering="crispEdges">
     <rect fill="#3b2412" x="1" y="13" width="30" height="14"/>
